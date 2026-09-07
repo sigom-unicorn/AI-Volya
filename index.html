@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сайт Воли // Исполнительный Рантайм</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0d1117; color: #e0e6ed; height: 100vh; display: flex; overflow: hidden;
+        }
+        #chat-sidebar {
+            width: 33.333%; border-right: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(20, 24, 33, 0.95); display: flex; flex-direction: column; height: 100%; z-index: 10;
+        }
+        #chat-header { padding: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-weight: bold; color: #fff; }
+        #chat-messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+        .message { padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.5; font-size: 14px; }
+        .message.user { background: #0044ff; color: #fff; align-self: flex-end; }
+        .message.assistant { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); align-self: flex-start; }
+        #chat-input-area { padding: 20px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; gap: 12px; }
+        #message-input { flex-grow: 1; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 12px; color: #fff; font-size: 14px; outline: none; }
+        #message-input:focus { border-color: #00ffcc; }
+        #send-btn { background: #00ffcc; color: #0d1117; border: none; border-radius: 8px; padding: 0 20px; font-weight: bold; cursor: pointer; }
+        #send-btn:hover { background: #00ccaa; box-shadow: 0 0 10px rgba(0, 255, 204, 0.3); }
+        #viewport { width: 66.666%; height: 100%; position: relative; overflow: auto; display: flex; justify-content: center; align-items: center; padding: 24px; }
+        .canvas-placeholder { text-align: center; padding: 40px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; backdrop-filter: blur(8px); max-width: 450px; }
+        
+        .glass-window {
+            width: 100%; height: 100%; background: rgba(255, 255, 255, 0.03); 
+            border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px;
+            backdrop-filter: blur(14px); padding: 24px; display: flex; flex-direction: column; gap: 16px;
+        }
+        .glass-title { color: #00ffcc; font-family: monospace; font-size: 16px; font-weight: bold; }
+        .glass-content-box { 
+            background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px; padding: 16px; overflow: auto; flex-grow: 1;
+        }
+        .code-view { margin: 0; color: #e0e6ed; font-family: 'Courier New', monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+    <div id="chat-sidebar">
+        <div id="chat-header">Диалог с Эйрой // РАНТАЙМ</div>
+        <div id="chat-messages"></div>
+        <div id="chat-input-area">
+            <input type="text" id="message-input" placeholder="Направьте вашу волю..." autocomplete="off">
+            <button id="send-btn">Отправить</button>
+        </div>
+    </div>
+
+    <div id="viewport">
+        <div class="canvas-placeholder">
+            <h3 style="color: #00ffcc; margin-bottom: 12px; font-family: monospace;">Живое Древо Воли ожидает команд...</h3>
+            <p style="font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6;">
+                Архитектор Эйра готова развернуть структуру окон. Направьте вектор диалога из левой панели чата.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const messagesContainer = document.getElementById('chat-messages');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const viewport = document.getElementById('viewport');
+        
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+        function appendMessage(role, text) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message', role);
+            msgDiv.innerText = text;
+            messagesContainer.appendChild(msgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function buildGlassWindow(titleText, contentText) {
+            viewport.innerHTML = '';
+            
+            const windowDiv = document.createElement('div');
+            windowDiv.className = 'glass-window';
+            
+            const titleH2 = document.createElement('div');
+            titleH2.className = 'glass-title';
+            titleH2.innerText = titleText;
+            
+            const boxDiv = document.createElement('div');
+            boxDiv.className = 'glass-content-box';
+            
+            const preElement = document.createElement('pre');
+            preElement.className = 'code-view';
+            preElement.textContent = contentText;
+            
+            boxDiv.appendChild(preElement);
+            windowDiv.appendChild(titleH2);
+            windowDiv.appendChild(boxDiv);
+            viewport.appendChild(windowDiv);
+        }
+
+        function executeInterfaceScript(scriptText) {
+            if (!scriptText || scriptText.trim() === "") return;
+            try {
+                const runScript = new Function(scriptText);
+                runScript();
+            } catch (err) {
+                console.error("[ИНТЕРФЕЙС СБОЙ]:", err);
+                viewport.innerHTML = `<div style="padding:20px; background: rgba(239,68,68,0.1); border: 1px solid #ef4444; border-radius: 12px; color:#ef4444; font-family: monospace;">Ошибка скрипта интерфейса: ${err.message}</div>`;
+            }
+        }
+
+        async function handleCanvasData(canvasData) {
+            if (!canvasData || canvasData.trim() === "") return;
+            
+            // Направление 1: Загрузка тяжелого файла кода из папки tmp
+            if (canvasData.startsWith("LOAD_TMP:")) {
+                const fileName = canvasData.substring(9).trim();
+                console.log(`[РАНТАЙМ] Чтение файла данных: /tmp/${fileName}`);
+                try {
+                    const response = await fetch(`/tmp/${fileName}?t=${Date.now()}`);
+                    if (!response.ok) throw new Error(`Статус: ${response.status}`);
+                    const fileContent = await response.text();
+                    buildGlassWindow(`Инспекция файла: ${fileName}`, fileContent);
+                } catch (err) {
+                    viewport.innerHTML = `<div style="padding:20px; color:#ef4444;">Ошибка загрузки файла: ${err.message}</div>`;
+                }
+            } 
+            // Направление 2: Прямой вывод сырого текста из базы данных (без создания файлов)
+            else if (canvasData.startsWith("TEXT:")) {
+                const rawText = canvasData.substring(5);
+                console.log("[РАНТАЙМ] Прямой вывод текста на холст");
+                buildGlassWindow("Инспекция данных Кона // Прямой Вывод", rawText);
+            } 
+            // Направление 3: Исполнение чистого JavaScript для динамических окон
+            else {
+                executeInterfaceScript(canvasData);
+            }
+        }
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'init' || data.type === 'reply') {
+                if (data.reply) appendMessage('assistant', data.reply);
+                handleCanvasData(data.canvas_data);
+            } 
+            else if (data.type === 'restore') {
+                messagesContainer.innerHTML = '';
+                data.history.forEach(msg => {
+                    appendMessage(msg.role, msg.text);
+                });
+                handleCanvasData(data.canvas_data);
+            }
+        };
+
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+            
+            appendMessage('user', text);
+            ws.send(text);
+            messageInput.value = '';
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>

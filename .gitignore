@@ -1,0 +1,29 @@
+# Игнорируем базу данных SQLite рантайма
+volya_game.db
+volya_game.db-journal
+volya_game.db-wal
+volya_game.db-shm
+
+# Игнорируем КЛЮЧ ИИ
+api_key.txt
+
+# Игнорируем временную инженерную папку просмотра
+tmp/
+
+# Игнорируем виртуальное окружение Python (если создавал внутри папки)
+venv/
+.venv/
+env/
+
+# Игнорируем служебные файлы Python и кэш компиляции
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Игнорируем скрытые настройки операционной системы и редакторов
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
