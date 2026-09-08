@@ -4,9 +4,7 @@ import sqlite3
 DB_PATH = "C:\\ai_volya\\volya_game.db"
 
 def init_db():
-    """Создает пустую структуру таблиц, справочников и системных логов игры 'Воля' (3NF)."""
     print(f"[СТРУКТУРА] Разворачиваем каркас базы данных по пути: {DB_PATH}")
-    
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
@@ -102,6 +100,7 @@ def init_db():
         template_id INTEGER NOT NULL,
         title TEXT NOT NULL,
         responsibility TEXT NOT NULL,
+        tasks TEXT NOT NULL DEFAULT '',
         FOREIGN KEY (template_id) REFERENCES kons (template_id) ON DELETE CASCADE
     )""")
     
@@ -125,7 +124,7 @@ def init_db():
         FOREIGN KEY (result_type_id) REFERENCES result_types (id)
     )""")
     
-    # --- 3. ЖИВЫЕ ЭКЗЕМПЛЯРЫ, ИГРОКИ И УЧАСТИЕ ---
+    # --- 3. ЖИВЫЕ ЭКЗЕМПЛЯРЫ, ВОЛЬНЫЕ ИГРОКИ И УЧАСТИЕ ---
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS quests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -140,6 +139,7 @@ def init_db():
         username TEXT PRIMARY KEY,
         conscience_drops INTEGER DEFAULT 0,
         status_id INTEGER NOT NULL,
+        bio TEXT NOT NULL DEFAULT '',
         FOREIGN KEY (status_id) REFERENCES player_statuses (id)
     )""")
     
@@ -181,10 +181,14 @@ def init_db():
         FOREIGN KEY (role_id) REFERENCES kon_role (id) ON DELETE CASCADE
     )""")
     
+    # --- 4. ИНДЕКСЫ ДЛЯ ОПТИМИЗАЦИИ РАНТАЙМА ---
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_quests_active ON quests(finished_at) WHERE finished_at IS NULL;")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_participations_user ON player_participations(username, quest_id);")
+    
     conn.commit()
     
-    # --- 4. АВТОЗАПОЛНЕНИЕ БАЗОВЫХ СИСТЕМНЫХ СЛОВАРЕЙ ---
-    print("[СТРУКТУРА] Наполняем системные справочники данными...")
+    # --- 5. АВТОЗАПОЛНЕНИЕ БАЗОВЫХ СИСТЕМНЫХ СЛОВАРЕЙ ---
+    print("[СТРУКТУРА] Наполняем вольные системные справочники данными...")
     
     for s in ["Бытие", "Познание", "Созидание", "Искусство", "Путешествия", "Владение"]:
         cursor.execute("INSERT OR IGNORE INTO steps (title) VALUES (?)", (s,))
@@ -205,7 +209,7 @@ def init_db():
         cursor.execute("INSERT OR IGNORE INTO proposal_types (title) VALUES (?)", (prop,))
         
     conn.commit()
-    print("[СТРУКТУРА] Все таблицы, справочники и логи памяти успешно развернуты.")
+    print("[СТРУКТУРА] Все вольные таблицы, справочники и логи памяти успешно развернуты.")
     conn.close()
 
 if __name__ == "__main__":
