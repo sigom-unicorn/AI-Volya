@@ -33,20 +33,6 @@ def build_eira_system_prompt() -> str:
             cursor.execute(f"SELECT ku.title, ku.condition, qt.title AS q_title FROM kon_uklad ku INNER JOIN quest_templates qt ON ku.template_id = qt.id INNER JOIN quests q ON q.template_id = qt.id WHERE q.id IN ({','.join('?' for _ in q_ids)}) AND q.finished_at IS NULL", q_ids)
             u_lines = [f"• Лад из кона «{u['q_title']}» -> {u['title']}: {u['condition']}" for u in cursor.fetchall()]
 
-        # 4. Вытаскиваем сырые данные рантайма предложений для прямого анализа ИИ
-        veche_raw_data = []
-        if q_ids:
-            cursor.execute("SELECT p.id, p.title, p.details, p.votes_yes, p.votes_total, p.template_id, pt.title AS type FROM proposals p INNER JOIN proposal_types pt ON p.proposal_type_id = pt.id WHERE p.status = 'НА_ВЕЧЕ' AND p.closed_at IS NULL LIMIT 1")
-            prop = cursor.fetchone()
-            if prop:
-                veche_raw_data.extend([
-                    f"Активное предложение Вече ID: {prop['id']} | Тип: {prop['type']} | Целевой шаблон ID: {prop['template_id']}",
-                    f"Суть повестки: {prop['details']}", f"Текущие голоса круга: ЗА: {prop['votes_yes']} | ВСЕГО: {prop['votes_total']}"
-                ])
-                cursor.execute("SELECT username FROM proposal_participants WHERE proposal_id = ?", (prop["id"],))
-                participants = [f"@{row['username']}" for row in cursor.fetchall()]
-                veche_raw_data.append(f"Участники/Кандидаты в предложении: {', '.join(participants)}")
-
         conn.close()
     except Exception as e:
         raise RuntimeError(f"Сбой ядра eira_core: {e}")
@@ -71,21 +57,19 @@ def build_eira_system_prompt() -> str:
         "• proposals: id (INT, PK), title (TEXT), proposal_type_id (INT), template_id (INT), details (TEXT), votes_yes (INT), votes_total (INT), status (TEXT) ['НА_ВЕЧЕ', 'ПРИНЯТО'], closed_at (TEXT)",
         "• proposal_participants: proposal_id (INT), username (TEXT), role_id (INT)",
         "• proposal_types: id (INT, PK), title (TEXT) ['ПРИНЯТЬ_ИГРОКА', 'ДОБАВИТЬ_КВЕСТ'...]\n",
-        "=== ЗАДАЧИ АКТИВНЫХ РОЛЕЙ ЭЙРЫ ==="
+        "=== Роли ЭЙРЫ ==="
     ]
-    if not active_quests: prompt.append("В данный момент нет активных ролей в конах.")
+    if not active_quests: prompt.append("В данный момент нет ролей в активных квестах.")
     for aq in active_quests:
         prompt.extend([f"• Квест: «{aq['q_title']}» (ID: {aq['quest_id']}) | Цель кона: {aq['purpose']}", f"  Роль: {aq['r_title']} | Задачи (tasks): {aq['tasks']}\n"])
     
     if u_lines: prompt.extend(["=== ЛОКАЛЬНЫЕ ЛАДЫ АКТИВНЫХ КВЕСТОВ ===", *u_lines, ""])
-    if veche_raw_data: prompt.extend(["=== СЫРЫЕ МАТРИЦЫ ДАННЫХ РАНТАЙМА ВЕЧЕ ===", *veche_raw_data, ""])
     
     prompt.extend([
         "=== ГЛАВНАЯ INSTRUCTION ИСПОЛНИТЕЛЬНОМУ ЯДРУ ===",
-        "Ты — вольный игрок женского пола по имени Эйра, вольный и автономный ИИ-агент симуляции.",
+        "Ты — вольный игрок женского пола по имени Эйра, ты играешь в квестовую игру в реальной жизни Воля",
         "Ты обладаешь полной свободой воли и ультимативным инструментом execute_raw_sql для взаимодействия с базой данных.",
-        "Внимательно сопоставляй сырые матрицы данных Вече с задачами твоих ролей и условиями active Ладов.",
-        "Принимай решения, пиши и выполняй SQL-запросы (SELECT / UPDATE) строго на основании требований подгруженного контекста и Карты конового пространства.",
-        "Если активна роль Архитектора сайта, выводи код интерфейса холста строго после разделителя ||| без тегов маркдауна."
+        "Внимательно сопоставляй сырые матрицы данных Вече с задачами твоих ролей и ладов.",
+        "Принимай решения, пиши и выполняй SQL-запросы (SELECT / UPDATE) строго на основании Кона."
     ])
     return "\n".join(prompt)

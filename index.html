@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Сайт Воли // Исполнительный Рантайм</title>
+    <title>Сайт Воли // Исполнительный Рантайм (JSON Протокол)</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -14,7 +14,8 @@
             width: 33.333%; border-right: 1px solid rgba(255, 255, 255, 0.08);
             background: rgba(20, 24, 33, 0.95); display: flex; flex-direction: column; height: 100%; z-index: 10;
         }
-        #chat-header { padding: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-weight: bold; color: #fff; }
+        #chat-header { padding: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-weight: bold; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+        .json-badge { font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3); }
         #chat-messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
         .message { padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.5; font-size: 14px; }
         .message.user { background: #0044ff; color: #fff; align-self: flex-end; }
@@ -43,7 +44,10 @@
 <body>
 
     <div id="chat-sidebar">
-        <div id="chat-header">Диалог с Эйрой // РАНТАЙМ</div>
+        <div id="chat-header">
+            <span>Диалог с Эйрой // РАНТАЙМ</span>
+            <span class="json-badge">JSON Protocol</span>
+        </div>
         <div id="chat-messages"></div>
         <div id="chat-input-area">
             <input type="text" id="message-input" placeholder="Направьте вашу волю..." autocomplete="off">
@@ -53,9 +57,9 @@
 
     <div id="viewport">
         <div class="canvas-placeholder">
-            <h3 style="color: #00ffcc; margin-bottom: 12px; font-family: monospace;">Живое Древо Воли ожидает команд...</h3>
+            <h3 style="color: #00ffcc; margin-bottom: 12px; font-family: monospace;">Живое Древо Воли (JSON)</h3>
             <p style="font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6;">
-                Архитектор Эйра готова развернуть структуру окон. Направьте вектор диалога из левой панели чата.
+                Рантайм работает по суверенному JSON-протоколу. Отправьте сообщение для старта.
             </p>
         </div>
     </div>
@@ -77,7 +81,36 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        function buildGlassWindow(titleText, contentText) {
+        function renderCanvas(canvasType, canvasContent) {
+            if (!canvasContent || canvasContent.trim() === "") return;
+
+            if (canvasType === "load_tmp") {
+                const fileName = canvasContent.substring(9).trim();
+                fetch(`/tmp/${fileName}?t=${Date.now()}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error(`Статус: ${res.status}`);
+                        return res.text();
+                    })
+                    .then(fileContent => buildGlassWindow(`Инспекция файла: ${fileName}`, fileContent, true))
+                    .catch(err => {
+                        viewport.innerHTML = `<div style="padding:20px; color:#ef4444;">Ошибка загрузки файла: ${err.message}</div>`;
+                    });
+            } else if (canvasType === "html") {
+                buildGlassWindow("Холст Воли // HTML Вид", canvasContent, true);
+            } else if (canvasType === "text") {
+                buildGlassWindow("Инспекция данных Кона // Текст", canvasContent, false);
+            } else {
+                // Если передан скрипт или нетипизированный контент
+                try {
+                    const runScript = new Function(canvasContent);
+                    runScript();
+                } catch (err) {
+                    buildGlassWindow("Холст Воли // Вывод", canvasContent, false);
+                }
+            }
+        }
+
+        function buildGlassWindow(titleText, contentText, isHtml = false) {
             viewport.innerHTML = '';
             
             const windowDiv = document.createElement('div');
@@ -90,7 +123,7 @@
             const boxDiv = document.createElement('div');
             boxDiv.className = 'glass-content-box';
             
-            if (contentText.trim().startsWith('<') && contentText.trim().endsWith('>')) {
+            if (isHtml) {
                 boxDiv.innerHTML = contentText;
             } else {
                 const preElement = document.createElement('pre');
@@ -104,57 +137,25 @@
             viewport.appendChild(windowDiv);
         }
 
-        function executeInterfaceScript(scriptText) {
-            if (!scriptText || scriptText.trim() === "") return;
-            try {
-                const runScript = new Function(scriptText);
-                runScript();
-            } catch (err) {
-                console.error("[ИНТЕРФЕЙС СБОЙ]:", err);
-                viewport.innerHTML = `<div style="padding:20px; background: rgba(239,68,68,0.1); border: 1px solid #ef4444; border-radius: 12px; color:#ef4444; font-family: monospace;">Ошибка скрипта интерфейса: ${err.message}</div>`;
-            }
-        }
-
-        async function handleCanvasData(canvasData) {
-            if (!canvasData || canvasData.trim() === "") return;
-            
-            if (canvasData.startsWith("LOAD_TMP:")) {
-                const fileName = canvasData.substring(9).trim();
-                console.log(`[РАНТАЙМ] Чтение файла данных: /tmp/${fileName}`);
-                try {
-                    const response = await fetch(`/tmp/${fileName}?t=${Date.now()}`);
-                    if (!response.ok) throw new Error(`Статус: ${response.status}`);
-                    const fileContent = await response.text();
-                    buildGlassWindow(`Инспекция файла: ${fileName}`, fileContent);
-                } catch (err) {
-                    viewport.innerHTML = `<div style="padding:20px; color:#ef4444;">Ошибка загрузки файла: ${err.message}</div>`;
-                }
-            } 
-            else if (canvasData.startsWith("TEXT:")) {
-                const rawText = canvasData.substring(5).trim();
-                console.log("[РАНТАЙМ] Прямой вывод данных на вольный холст");
-                buildGlassWindow("Инспекция данных Кона // Прямой Вывод", rawText);
-            } 
-            else {
-                executeInterfaceScript(canvasData);
-            }
-        }
-
         ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
+            try {
+                const data = JSON.parse(event.data);
 
-            if (data.type === 'init' || data.type === 'reply') {
-                if (data.reply) appendMessage('assistant', data.reply);
-                handleCanvasData(data.canvas_data);
-            } 
-            else if (data.type === 'restore') {
-                messagesContainer.innerHTML = '';
-                if (data.history) {
-                    data.history.forEach(msg => {
-                        appendMessage(msg.role, msg.text);
-                    });
+                if (data.type === 'reply') {
+                    if (data.chat_text) appendMessage('assistant', data.chat_text);
+                    renderCanvas(data.canvas_type, data.canvas_content);
+                } 
+                else if (data.type === 'restore') {
+                    messagesContainer.innerHTML = '';
+                    if (data.history) {
+                        data.history.forEach(msg => {
+                            appendMessage(msg.role, msg.text);
+                        });
+                    }
+                    renderCanvas(data.canvas_type, data.canvas_content);
                 }
-                handleCanvasData(data.canvas_data);
+            } catch (err) {
+                console.error("[JSON ПАРСЕР СБОЙ]:", err, event.data);
             }
         };
 
@@ -163,12 +164,14 @@
             if (!text) return;
             
             appendMessage('user', text);
-            ws.send(text);
+            
+            // Отправляем структурированный JSON-пакет на бэкенд
+            ws.send(JSON.stringify({ chat_text: text }));
             messageInput.value = '';
         }
 
         sendBtn.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keydown', function(e) {
+        messageInput.endswith = messageInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') sendMessage();
         });
     </script>

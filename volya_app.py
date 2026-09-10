@@ -14,6 +14,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 from eira_core import build_eira_system_prompt
 from tools_pack import all_tools
 from chat_logs import get_visible_history_from_db, save_message_to_db
+from eira_mem_flow import get_memory_flow, check_and_summarize
+
+# 🧵 ИМПОРТ ФОНОВОГО ВОРКЕРА «НИТИ ЭЙРЫ»
+from ai_task import start_ai_worker_background
 
 app = FastAPI()
 
@@ -23,13 +27,23 @@ os.makedirs(TMP_DIR, exist_ok=True)
 app.mount("/tmp", StaticFiles(directory=TMP_DIR), name="tmp")
 
 model = ChatGoogleGenerativeAI(
-    model="gemini-3.1-flash-lite", 
+    model="gemini-3.5-flash-lite", 
     temperature=0.2,
     max_output_tokens=30000
 )
 
+# 🧵 ЗАПУСК ФОНОВОГО ВОРКЕРА «НИТИ ЭЙРЫ» ПРИ СТАРТЕ РАНТАЙМА
+try:
+    start_ai_worker_background(model)
+    logging.info("[AI Worker] Фоновый поток 'Нити Эйры' успешно запущен.")
+except Exception as e:
+    logging.error(f"[AI Worker Error при старте]: {e}")
+
 # Единственная глобальная сессия вольного рантайма игры Воля
-DEFAULT_THREAD_ID = "sigom_eira_v1"
+DEFAULT_THREAD_ID = "sigom_eira_v2"
+
+# Единая константа глубины памяти и порога сжатия
+MEMORY_WINDOW = 20
 
 def extract_clean_text(raw_content):
     """Очищает и извлекает сырой текстовый контент из ответа ИИ-агента."""
@@ -53,16 +67,16 @@ async def get_interface():
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Асинхронный вольный канал обмена репликами и командами рантайма."""
+    """Асинхронный вольный канал обмена репликами и командами рантайма в формате JSON."""
     await websocket.accept()
     thread_id = DEFAULT_THREAD_ID
     logging.info(f"[СОКЕТ] Подключена сессия вольного рантайма")
     
     # Извлекаем окно последних сообщений для удержания контекста беседы
-    visible_history = get_visible_history_from_db(thread_id, 50)
+    visible_history = get_visible_history_from_db(thread_id, MEMORY_WINDOW)
     
     if len(visible_history) == 0:
-        # Если это первый вольный старт — собираем промпт из ядра и приветствуем Сигома
+        # Первичный вольный запуск
         dynamic_prompt = build_eira_system_prompt()
         agent_blueprint = create_react_agent(model, all_tools, prompt=dynamic_prompt)
         initial_prompt = "Системный триггер: Сессия возобновлена. Поприветствуй Сигома от своего вольного имени Эйра."
@@ -70,22 +84,22 @@ async def websocket_endpoint(websocket: WebSocket):
         response = await agent_blueprint.ainvoke({"messages": [("user", initial_prompt)]})
         raw_reply = extract_clean_text(response["messages"][-1].content)
         
-        # Сплит по новому семантическому маркеру |CANVAS|
         parts = raw_reply.split("|CANVAS|")
         reply_text = parts[0].strip() if len(parts) > 0 else raw_reply
         canvas_data = parts[1].strip() if len(parts) > 1 else ""
         
+        # Передаем структурированный JSON с явно разделенными полями (без костыльного автоопределения)
         await websocket.send_text(json.dumps({
-            "type": "reply", 
-            "reply": reply_text, 
-            "canvas_data": canvas_data
+            "type": "reply",
+            "chat_text": reply_text,
+            "canvas_type": "html",
+            "canvas_content": canvas_data
         }, ensure_ascii=False))
     else:
-        # Восстановление существующего вольного диалога из истории базы данных
+        # Восстановление истории из БД
         formatted_history = []
         last_canvas_data = ""
         for role, content in visible_history:
-            # Восстанавливаем логи по новому маркеру |CANVAS|
             parts = content.split("|CANVAS|")
             txt = parts[0].strip() if len(parts) > 0 else content
             if role == "assistant" and len(parts) > 1: 
@@ -93,22 +107,39 @@ async def websocket_endpoint(websocket: WebSocket):
             formatted_history.append({"role": role, "text": txt})
             
         await websocket.send_text(json.dumps({
-            "type": "restore", 
-            "history": formatted_history, 
-            "reply": "", 
-            "canvas_data": last_canvas_data
+            "type": "restore",
+            "history": formatted_history,
+            "chat_text": "",
+            "canvas_type": "html",
+            "canvas_content": last_canvas_data
         }, ensure_ascii=False))
 
     try:
         while True:
-            # Принимаем реплику от вольного игрока из чата
-            user_message = await websocket.receive_text()
+            # Принимаем JSON-пакет или текстовое сообщение от вольного игрока
+            raw_incoming = await websocket.receive_text()
+            try:
+                incoming_data = json.loads(raw_incoming)
+                user_message = incoming_data.get("chat_text", "").strip() or incoming_data.get("message", "").strip()
+            except json.JSONDecodeError:
+                user_message = raw_incoming.strip()
+
+            if not user_message:
+                continue
+
             save_message_to_db(thread_id, "user", user_message)
             
-            db_history = get_visible_history_from_db(thread_id, 50)
-            langgraph_messages = [("user" if h_role == "user" else "assistant", h_content) for h_role, h_content in db_history]
+            # 1. Загружаем долгосрочную память
+            mem_flow = get_memory_flow(thread_id)
+            memory_prefix = [("system", f"Долгосрочная память (Саммари прошлых эпох нити):\n{mem_flow}")]
+
+            # 2. Собираем живые логи
+            db_history = get_visible_history_from_db(thread_id, MEMORY_WINDOW)
+            langgraph_messages = memory_prefix + [
+                ("user" if h_role == "user" else "assistant", h_content) 
+                for h_role, h_content in db_history
+            ]
             
-            # ДИНАМИЧЕСКИЙ СДВИГ РАНТАЙМА: собираем промпт из ядра eira_core строго ПЕРЕД каждым ответом
             dynamic_prompt = build_eira_system_prompt()
             agent_blueprint = create_react_agent(model, all_tools, prompt=dynamic_prompt)
             response = await agent_blueprint.ainvoke({"messages": langgraph_messages})
@@ -116,39 +147,27 @@ async def websocket_endpoint(websocket: WebSocket):
             raw_reply = extract_clean_text(response["messages"][-1].content)
             save_message_to_db(thread_id, "assistant", raw_reply)
             
-            # Разделяем ответ на реплику в чат и инструкции Исполнительного Холста по маркеру |CANVAS|
+            # 3. Фоновый триггер сжатия памяти
+            check_and_summarize(thread_id, model, threshold=MEMORY_WINDOW)
+            
             parts = raw_reply.split("|CANVAS|")
             reply_text = parts[0].strip() if len(parts) > 0 else raw_reply
             canvas_data = parts[1].strip() if len(parts) > 1 else ""
             
-            # Интеллектуальный защитный хелпер: если Эйра увлеклась и забыла маркер, но вывела теги
-            if not canvas_data:
-                if "<div" in raw_reply:
-                    idx = raw_reply.find("<div")
-                    reply_text = raw_reply[:idx].strip()
-                    canvas_data = raw_reply[idx:].strip()
-                elif "TEXT:" in raw_reply:
-                    idx = raw_reply.find("TEXT:")
-                    reply_text = raw_reply[:idx].strip()
-                    canvas_data = raw_reply[idx:].strip()
-                elif "LOAD_TMP:" in raw_reply:
-                    idx = raw_reply.find("LOAD_TMP:")
-                    reply_text = raw_reply[:idx].strip()
-                    canvas_data = raw_reply[idx:].strip()
-            
-            # Чистим маркдаун-обертки, если модель их случайно сгенерировала
-            if canvas_data.startswith("```javascript"): canvas_data = canvas_data[13:]
-            elif canvas_data.startswith("```python"): canvas_data = canvas_data[9:]
-            elif canvas_data.startswith("```js"): canvas_data = canvas_data[5:]
-            elif canvas_data.startswith("```html"): canvas_data = canvas_data[7:]
-            elif canvas_data.startswith("```"): canvas_data = canvas_data[3:]
-            if canvas_data.endswith("```"): canvas_data = canvas_data[:-3]
-            
-            # Передаем структурированный JSON обратно в веб-сокет интерфейса
+            # Определяем тип холста
+            c_type = "html"
+            if canvas_data.startswith("SCRIPT:") or canvas_data.startswith("script:"):
+                c_type = "script"
+                canvas_data = canvas_data.split(":", 1)[1].strip()
+            elif not canvas_data.startswith("<") and canvas_data != "":
+                c_type = "text"
+
+            # Отправляем ответ в строгом JSON-формате
             await websocket.send_text(json.dumps({
-                "type": "reply", 
-                "reply": reply_text, 
-                "canvas_data": canvas_data.strip()
+                "type": "reply",
+                "chat_text": reply_text,
+                "canvas_type": c_type,
+                "canvas_content": canvas_data.strip()
             }, ensure_ascii=False))
     except Exception as e:
         logging.error(f"[СОКЕТ] Ошибка сессии веб-сокетов вольного рантайма: {str(e)}")
