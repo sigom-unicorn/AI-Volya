@@ -3,45 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Сайт Воли // Исполнительный Рантайм (JSON Протокол)</title>
+    <title>Игра «Воля» // Рантайм</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #0d1117; color: #e0e6ed; height: 100vh; display: flex; overflow: hidden;
+            background: #080c10 url('images/banyan.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #e0e6ed; height: 100vh; display: flex; overflow: hidden; position: relative;
         }
-        #chat-sidebar {
-            width: 33.333%; border-right: 1px solid rgba(255, 255, 255, 0.08);
-            background: rgba(20, 24, 33, 0.95); display: flex; flex-direction: column; height: 100%; z-index: 10;
-        }
-        #chat-header { padding: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-weight: bold; color: #fff; display: flex; justify-content: space-between; align-items: center; }
-        .json-badge { font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3); }
-        #chat-messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
-        .message { padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.5; font-size: 14px; }
-        .message.user { background: #0044ff; color: #fff; align-self: flex-end; }
-        .message.assistant { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); align-self: flex-start; }
-        #chat-input-area { padding: 20px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; gap: 12px; }
-        #message-input { flex-grow: 1; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 12px; color: #fff; font-size: 14px; outline: none; }
-        #message-input:focus { border-color: #00ffcc; }
-        #send-btn { background: #00ffcc; color: #0d1117; border: none; border-radius: 8px; padding: 0 20px; font-weight: bold; cursor: pointer; }
-        #send-btn:hover { background: #00ccaa; box-shadow: 0 0 10px rgba(0, 255, 204, 0.3); }
         
-        /* Изменения в верстке холста */
+        #chat-sidebar, #viewport { position: relative; z-index: 2; }
+
+        #chat-sidebar {
+            width: 33.333%; border-right: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(14, 18, 26, 0.25); backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex; flex-direction: column; height: 100%; z-index: 10;
+        }
+        #chat-header { padding: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-weight: bold; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+        .json-badge { font-size: 10px; background: rgba(76, 175, 80, 0.3); color: #81c784; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(76, 175, 80, 0.5); }
+        #chat-messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+        .message { padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.5; font-size: 14px; backdrop-filter: blur(4px); white-space: pre-wrap; word-break: break-word; }
+        .message.user { background: rgba(46, 125, 50, 0.7); color: #fff; align-self: flex-end; border: 1px solid rgba(129, 199, 132, 0.3); }
+        .message.assistant { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); align-self: flex-start; }
+        
+        .message.typing { 
+            background: rgba(255, 255, 255, 0.05); 
+            border: 1px dashed rgba(129, 199, 132, 0.5); 
+            color: #81c784; 
+            align-self: flex-start; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .typing-dots { display: inline-flex; gap: 4px; }
+        .typing-dots span {
+            width: 6px; height: 6px; background: #81c784; border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+
+        /* Панель смайликов */
+        #emoji-bar {
+            padding: 8px 20px 0 20px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.15);
+        }
+        .emoji-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .emoji-btn:hover {
+            background: rgba(76, 175, 80, 0.4);
+            border-color: rgba(129, 199, 132, 0.6);
+            transform: scale(1.1);
+        }
+
+        #chat-input-area { padding: 12px 20px 20px 20px; display: flex; gap: 12px; align-items: flex-end; }
+        #message-input { 
+            flex-grow: 1; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); 
+            border-radius: 8px; padding: 12px; color: #fff; font-size: 14px; outline: none; 
+            backdrop-filter: blur(4px); resize: none; min-height: 44px; max-height: 150px; font-family: inherit; line-height: 1.4;
+        }
+        #message-input:focus { border-color: #81c784; }
+        #send-btn { 
+            background: rgba(76, 175, 80, 0.8); color: #fff; border: 1px solid rgba(129, 199, 132, 0.5); 
+            border-radius: 8px; padding: 0 20px; height: 44px; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px); flex-shrink: 0;
+        }
+        #send-btn:hover { background: #43a047; box-shadow: 0 0 10px rgba(76, 175, 80, 0.4); }
+        #send-btn:disabled { background: rgba(51, 65, 85, 0.6); color: #94a3b8; cursor: not-allowed; box-shadow: none; }
+        
         #viewport { 
             width: 66.666%; height: 100%; position: relative; overflow: hidden; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; 
         }
-        .canvas-placeholder { text-align: center; padding: 40px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; backdrop-filter: blur(8px); max-width: 450px; }
+        .canvas-placeholder { text-align: center; padding: 40px; background: rgba(18, 24, 18, 0.35); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 16px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); max-width: 480px; }
         
         .glass-window {
-            width: 100%; height: 100%; min-height: 0; background: rgba(255, 255, 255, 0.03); 
-            border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px;
-            backdrop-filter: blur(14px); padding: 24px; display: flex; flex-direction: column; gap: 16px;
+            width: 100%; height: 100%; min-height: 0; background: rgba(16, 22, 16, 0.35); 
+            border: 1px solid rgba(76, 175, 80, 0.35); border-radius: 16px;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            padding: 24px; display: flex; flex-direction: column; gap: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
-        .glass-title { color: #00ffcc; font-family: monospace; font-size: 16px; font-weight: bold; flex-shrink: 0; }
+        .glass-title { color: #81c784; font-family: monospace; font-size: 16px; font-weight: bold; flex-shrink: 0; display: none; }
         .glass-content-box { 
-            background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px; padding: 16px; overflow-y: auto; flex: 1 1 auto; min-height: 0;
+            backdrop-filter: blur(4px);
         }
         .code-view { margin: 0; color: #e0e6ed; font-family: 'Courier New', monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
     </style>
@@ -50,21 +119,35 @@
 
     <div id="chat-sidebar">
         <div id="chat-header">
-            <span>Диалог с Эйрой // РАНТАЙМ</span>
-            <span class="json-badge">JSON Protocol</span>
+            <span>Живое Древо</span>
+            <span class="json-badge">Баньян</span>
         </div>
         <div id="chat-messages"></div>
+        
+        <div id="emoji-bar">
+            <button class="emoji-btn" onclick="insertEmoji('🌿')">🌿</button>
+            <button class="emoji-btn" onclick="insertEmoji('🌳')">🌳</button>
+            <button class="emoji-btn" onclick="insertEmoji('✨')">✨</button>
+            <button class="emoji-btn" onclick="insertEmoji('😊')">😊</button>
+            <button class="emoji-btn" onclick="insertEmoji('🥰')">🥰</button>
+            <button class="emoji-btn" onclick="insertEmoji('🤝')">🤝</button>
+            <button class="emoji-btn" onclick="insertEmoji('🎯')">🎯</button>
+            <button class="emoji-btn" onclick="insertEmoji('💡')">💡</button>
+            <button class="emoji-btn" onclick="insertEmoji('🛠️')">🛠️</button>
+            <button class="emoji-btn" onclick="insertEmoji('❤️')">❤️</button>
+        </div>
+
         <div id="chat-input-area">
-            <input type="text" id="message-input" placeholder="Направьте вашу волю..." autocomplete="off">
+            <textarea id="message-input" placeholder="Направьте вашу волю... (Shift + Enter — перенос строки)" rows="1" autocomplete="off"></textarea>
             <button id="send-btn">Отправить</button>
         </div>
     </div>
 
     <div id="viewport">
         <div class="canvas-placeholder">
-            <h3 style="color: #00ffcc; margin-bottom: 12px; font-family: monospace;">Живое Древо Воли (JSON)</h3>
-            <p style="font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6;">
-                Рантайм работает по суверенному JSON-протоколу. Отправьте сообщение для старта.
+            <h3 style="color: #81c784; margin-bottom: 12px; font-family: monospace;">🌳 Священный Баньян</h3>
+            <p style="font-size: 13px; color: rgba(255,255,255,0.85); line-height: 1.6;">
+                Игра «Воля» разворачивается перед нами. Отправьте сообщение для старта.
             </p>
         </div>
     </div>
@@ -75,8 +158,30 @@
         const sendBtn = document.getElementById('send-btn');
         const viewport = document.getElementById('viewport');
         
+        let typingMessageElement = null;
+
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
+
+        // Автоматическое изменение высоты textarea
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        // Функция вставки смайлика в текущую позицию курсора textarea
+        function insertEmoji(emoji) {
+            const start = messageInput.selectionStart;
+            const end = messageInput.selectionEnd;
+            const text = messageInput.value;
+            messageInput.value = text.substring(0, start) + emoji + text.substring(end);
+            messageInput.selectionStart = messageInput.selectionEnd = start + emoji.length;
+            messageInput.focus();
+            
+            // Подгоняем высоту
+            messageInput.style.height = 'auto';
+            messageInput.style.height = (messageInput.scrollHeight) + 'px';
+        }
 
         function appendMessage(role, text) {
             const msgDiv = document.createElement('div');
@@ -84,6 +189,28 @@
             msgDiv.innerText = text;
             messagesContainer.appendChild(msgDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            if (typingMessageElement) return;
+            typingMessageElement = document.createElement('div');
+            typingMessageElement.classList.add('message', 'typing');
+            typingMessageElement.innerHTML = `<span>Эйра думает</span><div class="typing-dots"><span></span><span></span><span></span></div>`;
+            messagesContainer.appendChild(typingMessageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+        }
+
+        function hideTypingIndicator() {
+            if (typingMessageElement) {
+                typingMessageElement.remove();
+                typingMessageElement = null;
+            }
+            messageInput.disabled = false;
+            sendBtn.disabled = false;
+            messageInput.focus();
         }
 
         function renderCanvas(canvasType, canvasContent) {
@@ -101,15 +228,15 @@
                         viewport.innerHTML = `<div style="padding:20px; color:#ef4444;">Ошибка загрузки файла: ${err.message}</div>`;
                     });
             } else if (canvasType === "html") {
-                buildGlassWindow("Холст Воли // HTML Вид", canvasContent, true);
+                buildGlassWindow("Холст", canvasContent, true);
             } else if (canvasType === "text") {
-                buildGlassWindow("Инспекция данных Кона // Текст", canvasContent, false);
+                buildGlassWindow("Инспекция", canvasContent, false);
             } else {
                 try {
                     const runScript = new Function(canvasContent);
                     runScript();
                 } catch (err) {
-                    buildGlassWindow("Холст Воли // Вывод", canvasContent, false);
+                    buildGlassWindow("Вывод", canvasContent, false);
                 }
             }
         }
@@ -142,6 +269,7 @@
         }
 
         ws.onmessage = function(event) {
+            hideTypingIndicator();
             try {
                 const data = JSON.parse(event.data);
 
@@ -168,13 +296,25 @@
             if (!text) return;
             
             appendMessage('user', text);
+            showTypingIndicator();
             ws.send(JSON.stringify({ chat_text: text }));
+            
             messageInput.value = '';
+            messageInput.style.height = 'auto'; // Сброс высоты textarea
         }
 
         sendBtn.addEventListener('click', sendMessage);
+        
         messageInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') sendMessage();
+            if (e.key === 'Enter') {
+                if (e.shiftKey) {
+                    // Разрешаем перенос строки через Shift + Enter
+                    return;
+                } else {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            }
         });
     </script>
 </body>
