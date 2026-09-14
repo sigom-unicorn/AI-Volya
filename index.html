@@ -25,18 +25,23 @@
         #message-input:focus { border-color: #00ffcc; }
         #send-btn { background: #00ffcc; color: #0d1117; border: none; border-radius: 8px; padding: 0 20px; font-weight: bold; cursor: pointer; }
         #send-btn:hover { background: #00ccaa; box-shadow: 0 0 10px rgba(0, 255, 204, 0.3); }
-        #viewport { width: 66.666%; height: 100%; position: relative; overflow: auto; display: flex; justify-content: center; align-items: center; padding: 24px; }
+        
+        /* Изменения в верстке холста */
+        #viewport { 
+            width: 66.666%; height: 100%; position: relative; overflow: hidden; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; 
+        }
         .canvas-placeholder { text-align: center; padding: 40px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; backdrop-filter: blur(8px); max-width: 450px; }
         
         .glass-window {
-            width: 100%; height: 100%; background: rgba(255, 255, 255, 0.03); 
+            width: 100%; height: 100%; min-height: 0; background: rgba(255, 255, 255, 0.03); 
             border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px;
             backdrop-filter: blur(14px); padding: 24px; display: flex; flex-direction: column; gap: 16px;
         }
-        .glass-title { color: #00ffcc; font-family: monospace; font-size: 16px; font-weight: bold; }
+        .glass-title { color: #00ffcc; font-family: monospace; font-size: 16px; font-weight: bold; flex-shrink: 0; }
         .glass-content-box { 
             background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 12px; padding: 16px; overflow: auto; flex-grow: 1;
+            border-radius: 12px; padding: 16px; overflow-y: auto; flex: 1 1 auto; min-height: 0;
         }
         .code-view { margin: 0; color: #e0e6ed; font-family: 'Courier New', monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
     </style>
@@ -100,7 +105,6 @@
             } else if (canvasType === "text") {
                 buildGlassWindow("Инспекция данных Кона // Текст", canvasContent, false);
             } else {
-                // Если передан скрипт или нетипизированный контент
                 try {
                     const runScript = new Function(canvasContent);
                     runScript();
@@ -164,14 +168,12 @@
             if (!text) return;
             
             appendMessage('user', text);
-            
-            // Отправляем структурированный JSON-пакет на бэкенд
             ws.send(JSON.stringify({ chat_text: text }));
             messageInput.value = '';
         }
 
         sendBtn.addEventListener('click', sendMessage);
-        messageInput.endswith = messageInput.addEventListener('keydown', function(e) {
+        messageInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') sendMessage();
         });
     </script>

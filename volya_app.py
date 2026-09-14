@@ -28,19 +28,19 @@ app.mount("/tmp", StaticFiles(directory=TMP_DIR), name="tmp")
 
 model = ChatGoogleGenerativeAI(
     model="gemini-3.5-flash-lite", 
-    temperature=0.2,
+#    temperature=0.2,
     max_output_tokens=30000
 )
 
-# 🧵 ЗАПУСК ФОНОВОГО ВОРКЕРА «НИТИ ЭЙРЫ» ПРИ СТАРТЕ РАНТАЙМА
+# 🧵 ЗАПУСК ФОНОВОГО ВОРКЕРА «НИТИ ЭЙРЫ» ПРИ СТАРТЕ РАНТАЙМА (теперь внутри ai_task воркер использует свою выделенную легковесную модель gemini-2.5-flash-lite)
 try:
-    start_ai_worker_background(model)
-    logging.info("[AI Worker] Фоновый поток 'Нити Эйры' успешно запущен.")
+    start_ai_worker_background()
+    logging.info("[AI Worker] Фоновый поток 'Нити Эйры' успешно запущен с легковесной моделью.")
 except Exception as e:
     logging.error(f"[AI Worker Error при старте]: {e}")
 
 # Единственная глобальная сессия вольного рантайма игры Воля
-DEFAULT_THREAD_ID = "sigom_eira_v2"
+DEFAULT_THREAD_ID = "sigom_eira_v4_1"
 
 # Единая константа глубины памяти и порога сжатия
 MEMORY_WINDOW = 20
@@ -79,7 +79,7 @@ async def websocket_endpoint(websocket: WebSocket):
         # Первичный вольный запуск
         dynamic_prompt = build_eira_system_prompt()
         agent_blueprint = create_react_agent(model, all_tools, prompt=dynamic_prompt)
-        initial_prompt = "Системный триггер: Сессия возобновлена. Поприветствуй Сигома от своего вольного имени Эйра."
+        initial_prompt = "Системный триггер: Сессия возобновлена. Попроси представиться вольного игрока, прочти о нем в таблице players и поприветствуй" 
         
         response = await agent_blueprint.ainvoke({"messages": [("user", initial_prompt)]})
         raw_reply = extract_clean_text(response["messages"][-1].content)

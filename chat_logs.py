@@ -1,5 +1,6 @@
 # C:\ai_volya\chat_logs.py
 import sqlite3
+from datetime import datetime
 
 DB_PATH = "C:\\ai_volya\\volya_game.db"
 
@@ -25,9 +26,14 @@ def get_visible_history_from_db(thread_id: str, limit: int = 15):
     return rows
 
 def save_message_to_db(thread_id: str, role: str, content: str):
-    """Сохраняет реплику диалога в SQLite для удержания контекста."""
+    """Сохраняет реплику диалога в SQLite с точным локальным временем и датой сервера (datetime.now())."""
     conn = _get_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO chat_logs (thread_id, role, content) VALUES (?, ?, ?)", (thread_id, role, content))
+    # Используем datetime.now() для записи точных даты и времени сервера
+    local_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    cursor.execute(
+        "INSERT INTO chat_logs (thread_id, role, content, created_at) VALUES (?, ?, ?, ?)",
+        (thread_id, role, content, local_time)
+    )
     conn.commit()
     conn.close()
