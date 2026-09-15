@@ -12,16 +12,139 @@
             background-size: cover;
             color: #e0e6ed; height: 100vh; display: flex; overflow: hidden; position: relative;
         }
-        
-        #chat-sidebar, #viewport { position: relative; z-index: 2; }
 
+        /* Экран авторизации (Врата Живого Древа) */
+        #auth-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(8, 12, 16, 0.85); backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 1000; display: flex; align-items: center; justify-content: center;
+        }
+        .auth-card {
+            background: rgba(16, 22, 16, 0.65); border: 1px solid rgba(76, 175, 80, 0.4);
+            border-radius: 20px; padding: 40px; width: 420px; max-width: 90%;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); text-align: center;
+            backdrop-filter: blur(12px);
+        }
+        .auth-title { color: #81c784; font-size: 24px; margin-bottom: 8px; font-weight: normal; }
+        .auth-subtitle { color: #b0bec5; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+        .auth-input {
+            width: 100%; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px; padding: 14px; color: #fff; font-size: 16px; outline: none;
+            margin-bottom: 16px; text-align: center;
+        }
+        .auth-input:focus { border-color: #81c784; box-shadow: 0 0 10px rgba(76, 175, 80, 0.3); }
+        .auth-btn {
+            width: 100%; background: rgba(76, 175, 80, 0.85); color: #fff; border: 1px solid rgba(129, 199, 132, 0.6);
+            border-radius: 10px; padding: 14px; font-size: 16px; font-weight: bold; cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .auth-btn:hover { background: #43a047; box-shadow: 0 0 15px rgba(76, 175, 80, 0.5); }
+        .players-hint { margin-top: 16px; font-size: 12px; color: #90a4ae; display: none; }
+
+        /* Кастомное модальное окно ввода / подтверждения (в стеклянном стиле) */
+        #modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(8, 12, 16, 0.7); backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 2000; display: none; align-items: center; justify-content: center;
+        }
+        .modal-card {
+            background: rgba(16, 22, 16, 0.85); border: 1px solid rgba(76, 175, 80, 0.4);
+            border-radius: 16px; padding: 30px; width: 380px; max-width: 90%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); text-align: center;
+            backdrop-filter: blur(12px);
+        }
+        .modal-title { color: #81c784; font-size: 18px; margin-bottom: 12px; font-weight: normal; }
+        .modal-desc { color: #b0bec5; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+        .modal-input {
+            width: 100%; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px; padding: 12px; color: #fff; font-size: 14px; outline: none;
+            margin-bottom: 16px; text-align: center; display: none;
+        }
+        .modal-input:focus { border-color: #81c784; box-shadow: 0 0 10px rgba(76, 175, 80, 0.3); }
+        .modal-buttons { display: flex; gap: 10px; }
+        .modal-btn {
+            flex: 1; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.2s;
+        }
+        .modal-btn.cancel { background: rgba(255, 255, 255, 0.08); color: #ccc; }
+        .modal-btn.cancel:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
+        .modal-btn.confirm { background: rgba(76, 175, 80, 0.85); color: #fff; border-color: rgba(129, 199, 132, 0.6); }
+        .modal-btn.confirm:hover { background: #43a047; }
+        .modal-btn.danger { background: rgba(239, 83, 80, 0.8); border-color: rgba(239, 83, 80, 0.9); }
+        .modal-btn.danger:hover { background: #e53935; }
+
+        /* Чат с гибким размером (начинается с 440px) */
         #chat-sidebar {
-            width: 33.333%; border-right: 1px solid rgba(255, 255, 255, 0.12);
+            width: 440px; min-width: 300px; max-width: 80vw;
+            border-right: 1px solid rgba(255, 255, 255, 0.12);
             background: rgba(14, 18, 26, 0.25); backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            display: flex; flex-direction: column; height: 100%; z-index: 10;
+            display: flex; flex-direction: column; height: 100%; z-index: 10; position: relative;
         }
-        #chat-header { padding: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-weight: bold; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* Элегантный ресайзер справа */
+        #chat-resizer {
+            position: absolute; top: 0; right: -4px; width: 8px; height: 100%;
+            cursor: ew-resize; z-index: 20; background: transparent;
+            transition: background 0.2s;
+        }
+        #chat-resizer:hover, #chat-resizer.resizing {
+            background: rgba(129, 199, 132, 0.4);
+            box-shadow: 0 0 8px rgba(129, 199, 132, 0.6);
+        }
+
+        #chat-header { 
+            padding: 16px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+            font-weight: bold; color: #fff; display: flex; justify-content: space-between; align-items: center; 
+            flex-shrink: 0;
+        }
+        
+        /* Кнопка вызова выдвижной панели нитей */
+        .threads-toggle-btn {
+            background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(129, 199, 132, 0.4);
+            color: #81c784; padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;
+            transition: all 0.2s; display: flex; align-items: center; gap: 4px;
+        }
+        .threads-toggle-btn:hover { background: rgba(76, 175, 80, 0.4); color: #fff; }
+
+        /* Выдвижная полупрозрачная панель нитей слева от чата (выезжает от самого левого края экрана) */
+        #threads-drawer {
+            position: fixed; top: 0; left: -320px; width: 320px; height: 100%;
+            background: rgba(10, 14, 20, 0.45); backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px); border-right: 1px solid rgba(76, 175, 80, 0.3);
+            box-shadow: 5px 0 25px rgba(0, 0, 0, 0.4); z-index: 100;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column; padding: 20px;
+        }
+        #threads-drawer.open { left: 0; }
+        .drawer-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 12px;
+        }
+        .drawer-title { color: #81c784; font-size: 16px; font-weight: bold; }
+        .drawer-close { background: none; border: none; color: #aaa; font-size: 20px; cursor: pointer; }
+        .drawer-close:hover { color: #fff; }
+
+        #threads-container {
+            flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;
+        }
+        .thread-item {
+            padding: 10px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; display: flex;
+            justify-content: space-between; align-items: center; color: #cfd8dc; background: rgba(255, 255, 255, 0.04);
+            border: 1px solid transparent; transition: all 0.2s;
+        }
+        .thread-item:hover { background: rgba(255, 255, 255, 0.08); }
+        .thread-item.active { background: rgba(76, 175, 80, 0.2); border-color: rgba(129, 199, 132, 0.4); color: #fff; }
+        .thread-del { font-size: 12px; color: #ef5350; background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+        .thread-del:hover { background: rgba(239, 83, 80, 0.2); }
+        .new-thread-btn {
+            background: rgba(76, 175, 80, 0.15); border: 1px dashed rgba(129, 199, 132, 0.4); color: #81c784;
+            padding: 10px; border-radius: 8px; text-align: center; font-size: 13px; cursor: pointer;
+        }
+        .new-thread-btn:hover { background: rgba(76, 175, 80, 0.3); }
+
         .json-badge { font-size: 10px; background: rgba(76, 175, 80, 0.3); color: #81c784; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(76, 175, 80, 0.5); }
         #chat-messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
         .message { padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.5; font-size: 14px; backdrop-filter: blur(4px); white-space: pre-wrap; word-break: break-word; }
@@ -59,6 +182,7 @@
             flex-wrap: wrap;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             background: rgba(0, 0, 0, 0.15);
+            flex-shrink: 0;
         }
         .emoji-btn {
             background: rgba(255, 255, 255, 0.08);
@@ -79,9 +203,9 @@
             transform: scale(1.1);
         }
 
-        #chat-input-area { padding: 12px 20px 20px 20px; display: flex; gap: 12px; align-items: flex-end; }
+        #chat-input-area { padding: 12px 20px 20px 20px; display: flex; gap: 12px; align-items: flex-end; flex-shrink: 0; }
         #message-input { 
-            flex-grow: 1; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.2); 
+            flex-grow: 1; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.2); 
             border-radius: 8px; padding: 12px; color: #fff; font-size: 14px; outline: none; 
             backdrop-filter: blur(4px); resize: none; min-height: 44px; max-height: 150px; font-family: inherit; line-height: 1.4;
         }
@@ -94,7 +218,7 @@
         #send-btn:disabled { background: rgba(51, 65, 85, 0.6); color: #94a3b8; cursor: not-allowed; box-shadow: none; }
         
         #viewport { 
-            width: 66.666%; height: 100%; position: relative; overflow: hidden; 
+            flex-grow: 1; height: 100%; position: relative; overflow: hidden; 
             display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; 
         }
         .canvas-placeholder { text-align: center; padding: 40px; background: rgba(18, 24, 18, 0.35); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 16px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); max-width: 480px; }
@@ -117,11 +241,51 @@
 </head>
 <body>
 
-    <div id="chat-sidebar">
-        <div id="chat-header">
-            <span>Живое Древо</span>
-            <span class="json-badge">Баньян</span>
+    <!-- Врата Живого Древа (Экран авторизации) -->
+    <div id="auth-overlay">
+        <div class="auth-card">
+            <h2 class="auth-title">🚪 Врата Живого Древа</h2>
+            <p class="auth-subtitle">Представьтесь вашим вольным именем для входа в игру без паролей и преград.</p>
+            <input type="text" id="username-input" class="auth-input" placeholder="Введите вольное имя..." autocomplete="off">
+            <button class="auth-btn" onclick="submitLogin()">Войти в Волю 🌿</button>
+            <div class="players-hint" id="players-hint-container"></div>
         </div>
+    </div>
+
+    <!-- Универсальное кастомное модальное окно (в стеклянном стиле) -->
+    <div id="modal-overlay">
+        <div class="modal-card">
+            <h3 class="modal-title" id="modal-title-text">🧵 Новая нить диалога</h3>
+            <p class="modal-desc" id="modal-desc-text">Введите название для новой ветки нитей:</p>
+            <input type="text" id="modal-input-field" class="modal-input" autocomplete="off">
+            <div class="modal-buttons" id="modal-buttons-container">
+                <button class="modal-btn cancel" onclick="closeCustomModal()">Отмена</button>
+                <button class="modal-btn confirm" id="modal-confirm-btn" onclick="confirmCustomModal()">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Выдвижная полупрозрачная панель нитей слева от края экрана -->
+    <div id="threads-drawer">
+        <div class="drawer-header">
+            <span class="drawer-title">🧵 Нити диалогов</span>
+            <button class="drawer-close" onclick="toggleThreadsDrawer()">×</button>
+        </div>
+        <div id="threads-container">
+            <!-- Динамически заполняется нитями -->
+        </div>
+        <div class="new-thread-btn" onclick="openCreateThreadModal()">+ Новая нить диалога</div>
+    </div>
+
+    <div id="chat-sidebar">
+        <!-- Элегантный ресайзер -->
+        <div id="chat-resizer"></div>
+
+        <div id="chat-header">
+            <button class="threads-toggle-btn" onclick="toggleThreadsDrawer()">🧵 Нити ▾</button>
+            <span id="current-player-label">Живое Древо</span>
+        </div>
+
         <div id="chat-messages"></div>
         
         <div id="emoji-bar">
@@ -153,23 +317,266 @@
     </div>
 
     <script>
+        const authOverlay = document.getElementById('auth-overlay');
+        const usernameInput = document.getElementById('username-input');
+        const currentPlayerLabel = document.getElementById('current-player-label');
+        const threadsDrawer = document.getElementById('threads-drawer');
+        const threadsContainer = document.getElementById('threads-container');
+
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalTitleText = document.getElementById('modal-title-text');
+        const modalDescText = document.getElementById('modal-desc-text');
+        const modalInputField = document.getElementById('modal-input-field');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+
+        const chatSidebar = document.getElementById('chat-sidebar');
+        const chatResizer = document.getElementById('chat-resizer');
         const messagesContainer = document.getElementById('chat-messages');
         const messageInput = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-btn');
         const viewport = document.getElementById('viewport');
         
+        let ws = null;
+        let currentThreadId = null;
         let typingMessageElement = null;
+        let modalCallback = null;
 
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws`);
+        // Логика ресайзера ширины чата
+        let isResizing = false;
 
-        // Автоматическое изменение высоты textarea
+        chatResizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            chatResizer.classList.add('resizing');
+            document.body.style.cursor = 'ew-resize';
+            e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const newWidth = e.clientX;
+            if (newWidth >= 300 && newWidth <= window.innerWidth * 0.8) {
+                chatSidebar.style.width = newWidth + 'px';
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                chatResizer.classList.remove('resizing');
+                document.body.style.cursor = 'default';
+            }
+        });
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const sessionToken = getCookie('volya_session');
+            if (sessionToken) {
+                authOverlay.style.display = 'none';
+                initWebSocketAndThreads(sessionToken);
+            }
+        });
+
+        function toggleThreadsDrawer() {
+            threadsDrawer.classList.toggle('open');
+        }
+
+        function submitLogin() {
+            const username = usernameInput.value.trim();
+            if (!username) {
+                alert('Пожалуйста, введите ваше вольное имя.');
+                return;
+            }
+
+            fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    authOverlay.style.display = 'none';
+                    currentPlayerLabel.innerText = `Игрок: ${data.username}`;
+                    initWebSocketAndThreads(data.token);
+                } else {
+                    alert('Ошибка входа: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            })
+            .catch(err => {
+                alert('Сбой запроса авторизации: ' + err.message);
+            });
+        }
+
+        function initWebSocketAndThreads(token) {
+            loadThreads();
+
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws?token=${encodeURIComponent(token)}`);
+
+            ws.onmessage = function(event) {
+                hideTypingIndicator();
+                try {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'error') {
+                        alert(data.message);
+                        authOverlay.style.display = 'flex';
+                        return;
+                    }
+
+                    if (data.thread_id) {
+                        currentThreadId = data.thread_id;
+                        highlightActiveThread();
+                    }
+
+                    if (data.type === 'reply') {
+                        if (data.chat_text) appendMessage('assistant', data.chat_text);
+                        renderCanvas(data.canvas_type, data.canvas_content);
+                        loadThreads();
+                    } 
+                    else if (data.type === 'restore') {
+                        messagesContainer.innerHTML = '';
+                        if (data.history) {
+                            data.history.forEach(msg => {
+                                appendMessage(msg.role, msg.text);
+                            });
+                        }
+                        renderCanvas(data.canvas_type, data.canvas_content);
+                        loadThreads();
+                    }
+                } catch (err) {
+                    console.error("[JSON ПАРСЕР СБОЙ]:", err, event.data);
+                }
+            };
+        }
+
+        function loadThreads() {
+            fetch('/api/threads')
+                .then(res => {
+                    if (res.status === 401) {
+                        authOverlay.style.display = 'flex';
+                        throw new Error('Требуется авторизация');
+                    }
+                    return res.json();
+                })
+                .then(threads => {
+                    let html = '';
+                    threads.forEach(t => {
+                        const isActive = t.thread_id === currentThreadId ? 'active' : '';
+                        html += `
+                            <div class="thread-item ${isActive}" onclick="switchThread('${t.thread_id}')">
+                                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1;">${t.title}</span>
+                                <button class="thread-del" onclick="event.stopPropagation(); promptDeleteThread('${t.thread_id}', '${t.title.replace(/'/g, "\\'")}')" title="Удалить нить">×</button>
+                            </div>
+                        `;
+                    });
+                    threadsContainer.innerHTML = html;
+                })
+                .catch(err => console.error(err));
+        }
+
+        function switchThread(threadId) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'switch_thread', thread_id: threadId }));
+                toggleThreadsDrawer();
+            }
+        }
+
+        // --- Управление кастомным модальным окном ---
+        function openCreateThreadModal() {
+            modalTitleText.innerText = "🧵 Новая нить диалога";
+            modalDescText.innerText = "Введите название для новой ветки нитей:";
+            modalInputField.style.display = "block";
+            modalConfirmBtn.innerText = "Создать";
+            modalConfirmBtn.className = "modal-btn confirm";
+            
+            const defaultTitle = 'Нить воли ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            modalInputField.value = defaultTitle;
+            
+            modalCallback = () => {
+                const title = modalInputField.value.trim() || 'Нить воли';
+                closeCustomModal();
+                fetch('/api/threads', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        switchThread(data.thread_id);
+                    }
+                });
+            };
+
+            modalOverlay.style.display = 'flex';
+            modalInputField.focus();
+            modalInputField.select();
+        }
+
+        function promptDeleteThread(threadId, threadTitle) {
+            modalTitleText.innerText = "🗑️ Удаление нити";
+            modalDescText.innerText = `Удалить нить «${threadTitle}» и всю её историю из Живого Древа?`;
+            modalInputField.style.display = "none";
+            modalConfirmBtn.innerText = "Удалить";
+            modalConfirmBtn.className = "modal-btn confirm danger";
+
+            modalCallback = () => {
+                closeCustomModal();
+                fetch(`/api/threads/${threadId}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            loadThreads();
+                            window.location.reload();
+                        }
+                    });
+            };
+
+            modalOverlay.style.display = 'flex';
+            modalConfirmBtn.focus();
+        }
+
+        function closeCustomModal() {
+            modalOverlay.style.display = 'none';
+            modalCallback = null;
+        }
+
+        function confirmCustomModal() {
+            if (modalCallback) {
+                modalCallback();
+            }
+        }
+
+        modalInputField.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                confirmCustomModal();
+            } else if (e.key === 'Escape') {
+                closeCustomModal();
+            }
+        });
+
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modalOverlay.style.display === 'flex') {
+                closeCustomModal();
+            }
+        });
+
+        function highlightActiveThread() {
+            loadThreads();
+        }
+
         messageInput.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
         });
 
-        // Функция вставки смайлика в текущую позицию курсора textarea
         function insertEmoji(emoji) {
             const start = messageInput.selectionStart;
             const end = messageInput.selectionEnd;
@@ -177,8 +584,6 @@
             messageInput.value = text.substring(0, start) + emoji + text.substring(end);
             messageInput.selectionStart = messageInput.selectionEnd = start + emoji.length;
             messageInput.focus();
-            
-            // Подгоняем высоту
             messageInput.style.height = 'auto';
             messageInput.style.height = (messageInput.scrollHeight) + 'px';
         }
@@ -268,39 +673,19 @@
             viewport.appendChild(windowDiv);
         }
 
-        ws.onmessage = function(event) {
-            hideTypingIndicator();
-            try {
-                const data = JSON.parse(event.data);
-
-                if (data.type === 'reply') {
-                    if (data.chat_text) appendMessage('assistant', data.chat_text);
-                    renderCanvas(data.canvas_type, data.canvas_content);
-                } 
-                else if (data.type === 'restore') {
-                    messagesContainer.innerHTML = '';
-                    if (data.history) {
-                        data.history.forEach(msg => {
-                            appendMessage(msg.role, msg.text);
-                        });
-                    }
-                    renderCanvas(data.canvas_type, data.canvas_content);
-                }
-            } catch (err) {
-                console.error("[JSON ПАРСЕР СБОЙ]:", err, event.data);
-            }
-        };
-
         function sendMessage() {
             const text = messageInput.value.trim();
-            if (!text) return;
+            if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
             
             appendMessage('user', text);
+            showTrustAndSend(text);
+        }
+
+        function showTrustAndSend(text) {
             showTypingIndicator();
             ws.send(JSON.stringify({ chat_text: text }));
-            
             messageInput.value = '';
-            messageInput.style.height = 'auto'; // Сброс высоты textarea
+            messageInput.style.height = 'auto';
         }
 
         sendBtn.addEventListener('click', sendMessage);
@@ -308,7 +693,6 @@
         messageInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 if (e.shiftKey) {
-                    // Разрешаем перенос строки через Shift + Enter
                     return;
                 } else {
                     e.preventDefault();
