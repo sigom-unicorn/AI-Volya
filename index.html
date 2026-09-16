@@ -10,7 +10,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: #080c10 url('images/banyan.jpg') no-repeat center center fixed;
             background-size: cover;
-            color: #e0e6ed; height: 100vh; display: flex; overflow: hidden; position: relative;
+            color: #ffffff; height: 100vh; display: flex; overflow: hidden; position: relative;
         }
 
         /* Экран авторизации (Врата Живого Древа) */
@@ -27,7 +27,7 @@
             backdrop-filter: blur(12px);
         }
         .auth-title { color: #81c784; font-size: 24px; margin-bottom: 8px; font-weight: normal; }
-        .auth-subtitle { color: #b0bec5; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+        .auth-subtitle { color: #ffffff; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
         .auth-input {
             width: 100%; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 10px; padding: 14px; color: #fff; font-size: 16px; outline: none;
@@ -40,7 +40,7 @@
             transition: all 0.2s ease;
         }
         .auth-btn:hover { background: #43a047; box-shadow: 0 0 15px rgba(76, 175, 80, 0.5); }
-        .players-hint { margin-top: 16px; font-size: 12px; color: #90a4ae; display: none; }
+        .players-hint { margin-top: 16px; font-size: 12px; color: #ffffff; display: none; }
 
         /* Кастомное модальное окно ввода / подтверждения (в стеклянном стиле) */
         #modal-overlay {
@@ -56,7 +56,7 @@
             backdrop-filter: blur(12px);
         }
         .modal-title { color: #81c784; font-size: 18px; margin-bottom: 12px; font-weight: normal; }
-        .modal-desc { color: #b0bec5; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+        .modal-desc { color: #ffffff; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
         .modal-input {
             width: 100%; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px; padding: 12px; color: #fff; font-size: 14px; outline: none;
@@ -66,9 +66,9 @@
         .modal-buttons { display: flex; gap: 10px; }
         .modal-btn {
             flex: 1; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.2s;
+            transition: all 0.2s; color: #ffffff;
         }
-        .modal-btn.cancel { background: rgba(255, 255, 255, 0.08); color: #ccc; }
+        .modal-btn.cancel { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
         .modal-btn.cancel:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
         .modal-btn.confirm { background: rgba(76, 175, 80, 0.85); color: #fff; border-color: rgba(129, 199, 132, 0.6); }
         .modal-btn.confirm:hover { background: #43a047; }
@@ -104,7 +104,7 @@
         /* Кнопка вызова выдвижной панели нитей */
         .threads-toggle-btn {
             background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(129, 199, 132, 0.4);
-            color: #81c784; padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;
+            color: #ffffff; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer;
             transition: all 0.2s; display: flex; align-items: center; gap: 4px;
         }
         .threads-toggle-btn:hover { background: rgba(76, 175, 80, 0.4); color: #fff; }
@@ -124,7 +124,7 @@
             margin-bottom: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 12px;
         }
         .drawer-title { color: #81c784; font-size: 16px; font-weight: bold; }
-        .drawer-close { background: none; border: none; color: #aaa; font-size: 20px; cursor: pointer; }
+        .drawer-close { background: none; border: none; color: #ffffff; font-size: 20px; cursor: pointer; }
         .drawer-close:hover { color: #fff; }
 
         #threads-container {
@@ -132,29 +132,29 @@
         }
         .thread-item {
             padding: 10px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; display: flex;
-            justify-content: space-between; align-items: center; color: #cfd8dc; background: rgba(255, 255, 255, 0.04);
+            justify-content: space-between; align-items: center; color: #ffffff; background: rgba(255, 255, 255, 0.04);
             border: 1px solid transparent; transition: all 0.2s;
         }
-        .thread-item:hover { background: rgba(255, 255, 255, 0.08); }
+        .thread-item:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
         .thread-item.active { background: rgba(76, 175, 80, 0.2); border-color: rgba(129, 199, 132, 0.4); color: #fff; }
         .thread-del { font-size: 12px; color: #ef5350; background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
         .thread-del:hover { background: rgba(239, 83, 80, 0.2); }
         .new-thread-btn {
-            background: rgba(76, 175, 80, 0.15); border: 1px dashed rgba(129, 199, 132, 0.4); color: #81c784;
-            padding: 10px; border-radius: 8px; text-align: center; font-size: 13px; cursor: pointer;
+            background: rgba(76, 175, 80, 0.15); border: 1px dashed rgba(129, 199, 132, 0.4); color: #ffffff;
+            padding: 10px; border-radius: 8px; text-align: center; font-size: 13px; font-weight: bold; cursor: pointer;
         }
-        .new-thread-btn:hover { background: rgba(76, 175, 80, 0.3); }
+        .new-thread-btn:hover { background: rgba(76, 175, 80, 0.3); color: #fff; }
 
         .json-badge { font-size: 10px; background: rgba(76, 175, 80, 0.3); color: #81c784; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(76, 175, 80, 0.5); }
         #chat-messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
-        .message { padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.5; font-size: 14px; backdrop-filter: blur(4px); white-space: pre-wrap; word-break: break-word; }
+        .message { padding: 12px 16px; border-radius: 12px; max-width: 85%; line-height: 1.5; font-size: 14px; backdrop-filter: blur(4px); white-space: pre-wrap; word-break: break-word; color: #ffffff; }
         .message.user { background: rgba(46, 125, 50, 0.7); color: #fff; align-self: flex-end; border: 1px solid rgba(129, 199, 132, 0.3); }
-        .message.assistant { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); align-self: flex-start; }
+        .message.assistant { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); align-self: flex-start; color: #ffffff; }
         
         .message.typing { 
             background: rgba(255, 255, 255, 0.05); 
             border: 1px dashed rgba(129, 199, 132, 0.5); 
-            color: #81c784; 
+            color: #ffffff; 
             align-self: flex-start; 
             display: flex; 
             align-items: center; 
@@ -164,7 +164,7 @@
         }
         .typing-dots { display: inline-flex; gap: 4px; }
         .typing-dots span {
-            width: 6px; height: 6px; background: #81c784; border-radius: 50%;
+            width: 6px; height: 6px; background: #ffffff; border-radius: 50%;
             animation: bounce 1.4s infinite ease-in-out both;
         }
         .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
@@ -234,9 +234,9 @@
         .glass-content-box { 
             background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px; padding: 16px; overflow-y: auto; flex: 1 1 auto; min-height: 0;
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px); color: #ffffff;
         }
-        .code-view { margin: 0; color: #e0e6ed; font-family: 'Courier New', monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
+        .code-view { margin: 0; color: #ffffff; font-family: 'Courier New', monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -255,8 +255,8 @@
     <!-- Универсальное кастомное модальное окно (в стеклянном стиле) -->
     <div id="modal-overlay">
         <div class="modal-card">
-            <h3 class="modal-title" id="modal-title-text">🧵 Новая нить диалога</h3>
-            <p class="modal-desc" id="modal-desc-text">Введите название для новой ветки нитей:</p>
+            <h3 class="modal-title" id="modal-title-text">💬 Новая беседа</h3>
+            <p class="modal-desc" id="modal-desc-text">Введите название для новой беседы:</p>
             <input type="text" id="modal-input-field" class="modal-input" autocomplete="off">
             <div class="modal-buttons" id="modal-buttons-container">
                 <button class="modal-btn cancel" onclick="closeCustomModal()">Отмена</button>
@@ -265,16 +265,16 @@
         </div>
     </div>
 
-    <!-- Выдвижная полупрозрачная панель нитей слева от края экрана -->
+    <!-- Выдвижная полупрозрачная панель бесед слева от края экрана -->
     <div id="threads-drawer">
         <div class="drawer-header">
-            <span class="drawer-title">🧵 Нити диалогов</span>
+            <span class="drawer-title">💬 Беседы</span>
             <button class="drawer-close" onclick="toggleThreadsDrawer()">×</button>
         </div>
         <div id="threads-container">
-            <!-- Динамически заполняется нитями -->
+            <!-- Динамически заполняется беседами -->
         </div>
-        <div class="new-thread-btn" onclick="openCreateThreadModal()">+ Новая нить диалога</div>
+        <div class="new-thread-btn" onclick="openCreateThreadModal()">+ Новая беседа</div>
     </div>
 
     <div id="chat-sidebar">
@@ -282,8 +282,8 @@
         <div id="chat-resizer"></div>
 
         <div id="chat-header">
-            <button class="threads-toggle-btn" onclick="toggleThreadsDrawer()">🧵 Нити ▾</button>
-            <span id="current-player-label">Живое Древо</span>
+            <button class="threads-toggle-btn" onclick="toggleThreadsDrawer()">💬 Беседы ▾</button>
+            <span id="current-player-label" style="color: #ffffff;">Живое Древо</span>
         </div>
 
         <div id="chat-messages"></div>
@@ -472,7 +472,7 @@
                         html += `
                             <div class="thread-item ${isActive}" onclick="switchThread('${t.thread_id}')">
                                 <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1;">${t.title}</span>
-                                <button class="thread-del" onclick="event.stopPropagation(); promptDeleteThread('${t.thread_id}', '${t.title.replace(/'/g, "\\'")}')" title="Удалить нить">×</button>
+                                <button class="thread-del" onclick="event.stopPropagation(); promptDeleteThread('${t.thread_id}', '${t.title.replace(/'/g, "\\'")}')" title="Удалить беседу">×</button>
                             </div>
                         `;
                     });
@@ -490,17 +490,17 @@
 
         // --- Управление кастомным модальным окном ---
         function openCreateThreadModal() {
-            modalTitleText.innerText = "🧵 Новая нить диалога";
-            modalDescText.innerText = "Введите название для новой ветки нитей:";
+            modalTitleText.innerText = "💬 Новая беседа";
+            modalDescText.innerText = "Введите название для новой беседы:";
             modalInputField.style.display = "block";
             modalConfirmBtn.innerText = "Создать";
             modalConfirmBtn.className = "modal-btn confirm";
             
-            const defaultTitle = 'Нить воли ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const defaultTitle = 'Беседа воли ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             modalInputField.value = defaultTitle;
             
             modalCallback = () => {
-                const title = modalInputField.value.trim() || 'Нить воли';
+                const title = modalInputField.value.trim() || 'Беседа воли';
                 closeCustomModal();
                 fetch('/api/threads', {
                     method: 'POST',
@@ -521,8 +521,8 @@
         }
 
         function promptDeleteThread(threadId, threadTitle) {
-            modalTitleText.innerText = "🗑️ Удаление нити";
-            modalDescText.innerText = `Удалить нить «${threadTitle}» и всю её историю из Живого Древа?`;
+            modalTitleText.innerText = "🗑️ Удаление беседы";
+            modalDescText.innerText = `Удалить беседу «${threadTitle}» и всю её историю из Живого Древа?`;
             modalInputField.style.display = "none";
             modalConfirmBtn.innerText = "Удалить";
             modalConfirmBtn.className = "modal-btn confirm danger";
@@ -691,6 +691,7 @@
         sendBtn.addEventListener('click', sendMessage);
         
         messageInput.addEventListener('keydown', function(e) {
+            e.stopPropagation();
             if (e.key === 'Enter') {
                 if (e.shiftKey) {
                     return;

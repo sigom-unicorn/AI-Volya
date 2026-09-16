@@ -27,6 +27,34 @@ def read_app_file(file_name: str) -> str:
         return f"Ошибка чтения файла: {str(e)}"
 
 @tool
+def read_docx_file(file_name: str) -> str:
+    """Инструмент для чтения содержимого документов Microsoft Word (.docx). Извлекает весь текст из абзацев и таблиц."""
+    try:
+        import docx
+        safe_path = _ensure_safe_path(file_name)
+        if not os.path.exists(safe_path):
+            return f"Ошибка: Файл '{file_name}' не найден."
+        
+        doc = docx.Document(safe_path)
+        fullText = []
+        
+        # Чтение абзацев
+        for para in doc.paragraphs:
+            if para.text.strip():
+                fullText.append(para.text)
+                
+        # Чтение таблиц
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                if row_text:
+                    fullText.append(" | ".join(row_text))
+                    
+        return "\n".join(fullText)
+    except Exception as e:
+        return f"Ошибка чтения Word-документа: {str(e)}"
+
+@tool
 def write_app_file(file_name: str, content: str) -> str:
     """Инструмент записи и модификации файлов."""
     try:
