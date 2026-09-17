@@ -4,6 +4,8 @@ volya_game.db-journal
 volya_game.db-wal
 volya_game.db-shm
 
+ai_subconscious.db
+
 # Игнорируем КЛЮЧ ИИ
 api_key.txt
 
