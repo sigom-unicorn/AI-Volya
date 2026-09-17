@@ -4,13 +4,13 @@ import sqlite3
 DB_PATH = "C:\\ai_volya\\volya_game.db"
 
 def init_db():
-    print(f"[СТРУКТУРА] Разворачиваем каркас базы данных по пути: {DB_PATH}")
+    print(f"[СТРУКТУРА] Разворачиваем актуальный каркас базы данных по пути: {DB_PATH}")
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     cursor = conn.cursor()
     
-    # --- 0. СИСТЕМНАЯ ПАМЯТЬ РАНТАЙМА (ЛОГИ ЧАТА) ---
+    # --- 0. СИСТЕМНАЯ ПАМЯТЬ РАНТАЙМА (ЛОГИ И ИИ-ПОТОКИ) ---
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS chat_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,6 +18,47 @@ def init_db():
         role TEXT NOT NULL,
         content TEXT NOT NULL,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )""")
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ai_mem_flows (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        thread_id TEXT NOT NULL,
+        summary_text TEXT NOT NULL,
+        last_message_id INTEGER NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )""")
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ai_threads (
+        thread_id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT,
+        username TEXT
+    )""")
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ai_task_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        prompt TEXT,
+        expected_result TEXT
+    )""")
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ai_task_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        template_id INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        finished_at TEXT,
+        result_log TEXT,
+        run_at TEXT,
+        state TEXT DEFAULT 'ОЖИДАНИЕ',
+        init_prompt TEXT,
+        thread_id TEXT,
+        FOREIGN KEY (template_id) REFERENCES ai_task_templates(id)
     )""")
     
     # --- 1. ТАБЛИЦЫ-СПРАВОЧНИКИ (СЛОВАРИ СИСТЕМЫ) ---
@@ -27,7 +68,10 @@ def init_db():
         title TEXT UNIQUE NOT NULL,
         min_required_drops INTEGER DEFAULT NULL,
         min_reward_drops INTEGER DEFAULT NULL,
-        max_reward_drops INTEGER DEFAULT NULL
+        max_reward_drops INTEGER DEFAULT NULL,
+        description TEXT,
+        reward_drops INTEGER,
+        daily_reward_drops INTEGER
     )""")
     
     cursor.execute("""
@@ -79,7 +123,7 @@ def init_db():
     )""")
     
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS kons (
+    CREATE TABLE IF NOT EXISTS kon_place (
         template_id INTEGER PRIMARY KEY,
         place TEXT NOT NULL,
         FOREIGN KEY (template_id) REFERENCES quest_templates (id) ON DELETE CASCADE
@@ -91,7 +135,7 @@ def init_db():
         template_id INTEGER NOT NULL,
         term TEXT NOT NULL,
         definition TEXT NOT NULL,
-        FOREIGN KEY (template_id) REFERENCES kons (template_id) ON DELETE CASCADE
+        FOREIGN KEY (template_id) REFERENCES kon_place (template_id) ON DELETE CASCADE
     )""")
     
     cursor.execute("""
@@ -100,8 +144,17 @@ def init_db():
         template_id INTEGER NOT NULL,
         title TEXT NOT NULL,
         responsibility TEXT NOT NULL,
-        tasks TEXT NOT NULL DEFAULT '',
-        FOREIGN KEY (template_id) REFERENCES kons (template_id) ON DELETE CASCADE
+        FOREIGN KEY (template_id) REFERENCES kon_place (template_id) ON DELETE CASCADE
+    )""")
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS kon_role_tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        role_id INTEGER NOT NULL,
+        task_name TEXT NOT NULL,
+        task_goal TEXT,
+        algorithm TEXT,
+        FOREIGN KEY (role_id) REFERENCES kon_role(id) ON DELETE CASCADE
     )""")
     
     cursor.execute("""
@@ -110,7 +163,7 @@ def init_db():
         template_id INTEGER NOT NULL,
         title TEXT NOT NULL,
         condition TEXT NOT NULL,
-        FOREIGN KEY (template_id) REFERENCES kons (template_id) ON DELETE CASCADE
+        FOREIGN KEY (template_id) REFERENCES kon_place (template_id) ON DELETE CASCADE
     )""")
     
     cursor.execute("""
@@ -120,7 +173,7 @@ def init_db():
         result_type_id INTEGER NOT NULL,
         title TEXT NOT NULL,
         description TEXT DEFAULT NULL,
-        FOREIGN KEY (template_id) REFERENCES kons (template_id) ON DELETE CASCADE,
+        FOREIGN KEY (template_id) REFERENCES kon_place (template_id) ON DELETE CASCADE,
         FOREIGN KEY (result_type_id) REFERENCES result_types (id)
     )""")
     
@@ -131,7 +184,10 @@ def init_db():
         template_id INTEGER NOT NULL,
         created_at TEXT NOT NULL,
         finished_at TEXT DEFAULT NULL,
-        FOREIGN KEY (template_id) REFERENCES quest_templates (id) ON DELETE RESTRICT
+        parent_quest_id INTEGER DEFAULT NULL,
+        title TEXT DEFAULT NULL,
+        FOREIGN KEY (template_id) REFERENCES quest_templates (id) ON DELETE RESTRICT,
+        FOREIGN KEY (parent_quest_id) REFERENCES quests(id) ON DELETE SET NULL
     )""")
     
     cursor.execute("""
@@ -140,6 +196,7 @@ def init_db():
         conscience_drops INTEGER DEFAULT 0,
         status_id INTEGER NOT NULL,
         bio TEXT NOT NULL DEFAULT '',
+        session_token TEXT DEFAULT NULL,
         FOREIGN KEY (status_id) REFERENCES player_statuses (id)
     )""")
     
@@ -166,16 +223,19 @@ def init_db():
         status TEXT DEFAULT 'НА_ВЕЧЕ',
         created_at TEXT NOT NULL,
         closed_at TEXT DEFAULT NULL,
+        quest_id INTEGER DEFAULT NULL,
         FOREIGN KEY (proposal_type_id) REFERENCES proposal_types (id),
-        FOREIGN KEY (template_id) REFERENCES quest_templates (id) ON DELETE CASCADE
+        FOREIGN KEY (template_id) REFERENCES quest_templates (id) ON DELETE CASCADE,
+        FOREIGN KEY (quest_id) REFERENCES quests (id) ON DELETE SET NULL
     )""")
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS proposal_participants (
         proposal_id INTEGER NOT NULL,
         username TEXT NOT NULL,
-        role_id INTEGER NOT NULL,
-        PRIMARY KEY (proposal_id, username, role_id),
+        role_id INTEGER DEFAULT NULL,
+        vote TEXT DEFAULT NULL,
+        PRIMARY KEY (proposal_id, username),
         FOREIGN KEY (proposal_id) REFERENCES proposals (id) ON DELETE CASCADE,
         FOREIGN KEY (username) REFERENCES players (username) ON DELETE CASCADE,
         FOREIGN KEY (role_id) REFERENCES kon_role (id) ON DELETE CASCADE
@@ -209,7 +269,7 @@ def init_db():
         cursor.execute("INSERT OR IGNORE INTO proposal_types (title) VALUES (?)", (prop,))
         
     conn.commit()
-    print("[СТРУКТУРА] Все вольные таблицы, справочники и логи памяти успешно развернуты.")
+    print("[СТРУКТУРА] Каркас базы данных успешно инициализирован.")
     conn.close()
 
 if __name__ == "__main__":

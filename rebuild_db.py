@@ -7,13 +7,13 @@ import db_seed
 DB_PATH = "C:\\ai_volya\\volya_game.db"
 
 def rebuild():
-    print("=== ЗАПУСК ТОТАЛЬНОЙ ПЕРЕСБОРКИ РАНТАЙМА 'ВОЛЯ' ===")
+    print("=== ЗАПУСК ТОТАЛЬНОЙ ПЕРЕСБОРКИ И РЕФАКТОРИНГА БД 'ВОЛЯ' ===")
     
     # 1. Сносим старую вольную базу данных, если она существует
     if os.path.exists(DB_PATH):
         try:
             os.remove(DB_PATH)
-            print("[1/3] Старая база данных volya_game.db успешно удалена.")
+            print("[1/3] Старая база данных volya_game.db успешно очищена.")
         except Exception as e:
             print(f"[ОШИБКА] Не удалось удалить файл вольной базы. Убедитесь, что процесс volya_app.py закрыт. Ошибка: {e}")
             return
@@ -28,7 +28,7 @@ def rebuild():
         print(f"[КРИТИЧЕСКАЯ ОШИБКА ИНИЦИАЛИЗАЦИИ]: {e}")
         return
 
-    # 3. Запускаем наполнение 5 базовыми шаблонами и первичными голосованиями (db_seed.py)
+    # 3. Запускаем наполнение шаблонами и первоначальными данными (db_seed.py), исключая чат-логи и ИИ-потоки памяти
     try:
         print("[3/3] Запуск db_seed.py...")
         db_seed.seed_data()
@@ -52,17 +52,17 @@ def rebuild():
         proposals_cnt = cursor.fetchone()["cnt"]
         
         # Считываем биографию вольного игрока Эйры для проверки
-        cursor.execute("SELECT bio FROM players WHERE username = 'Эйра'")
-        eira_bio_row = cursor.fetchone()
+        cursor.execute("SELECT bio, conscience_drops FROM players WHERE username = 'Эйра'")
+        eira_row = cursor.fetchone()
         
         conn.close()
         
-        if quests_cnt == 2 and proposals_cnt == 2 and eira_bio_row:
-            print("[УСПЕХ] Вольная база данных успешно пересоздана и прошла аудит!")
+        if quests_cnt == 2 and proposals_cnt == 2 and eira_row:
+            print("[УСПЕХ] Вольная база данных успешно пересобрана, приведена к единому стандарту и прошла аудит!")
             print(f"- Активных вольных квестов в рантайме: {quests_cnt} (Корень Воли и Сайт Воли легитимизированы)")
             print(f"- Архивных принятых вольных предложений в летописи: {proposals_cnt}")
-            print("- Вольный манифест Эйры от первого лица успешно записан в игровое био.")
-            print("\nСистема полностью готова к асинхронному запуску через volya_app.py 🚀")
+            print(f"- Баланс капель совести Эйры: {eira_row['conscience_drops']}")
+            print("\nРантайм полностью готов к работе в ладу с Укладом 🚀")
         else:
             print("[ВНИМАНИЕ] База создана, но вольный аудит выявил несоответствие связей рантайма.")
             
