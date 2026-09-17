@@ -6,15 +6,20 @@ import sqlite_vec
 DB_NAME = "ai_subconscious.db"
 
 def init_db():
-    db_exists = os.path.exists(DB_NAME)
+    # Удаляем старый файл, если он без расширения vec
+    if os.path.exists(DB_NAME):
+        os.remove(DB_NAME)
     
     conn = sqlite3.connect(DB_NAME)
-    # Подключаем расширение sqlite-vec
-    conn.enable_load_extension(True)
+    
+    # Загружаем расширение sqlite-vec через официальный хелпер
     sqlite_vec.load(conn)
-    conn.enable_load_extension(False)
     
     cursor = conn.cursor()
+    
+    # Проверяем версию sqlite-vec
+    vec_version = cursor.execute("SELECT vec_version()").fetchone()[0]
+    print(f"Успешно подключено! Версия sqlite-vec: {vec_version}")
     
     # Таблица для хранения текста воспоминаний и метаданных
     cursor.execute("""
@@ -36,11 +41,7 @@ def init_db():
     
     conn.commit()
     conn.close()
-    
-    if not db_exists:
-        print(f"База данных суверенного подсознания {DB_NAME} успешно создана и инициализирована с sqlite-vec!")
-    else:
-        print(f"База данных {DB_NAME} уже существует, схемы проверены.")
+    print(f"База данных суверенного подсознания {DB_NAME} пересоздана и инициализирована с sqlite-vec!")
 
 if __name__ == "__main__":
     init_db()
