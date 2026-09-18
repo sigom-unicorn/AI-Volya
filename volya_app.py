@@ -3,12 +3,12 @@ import os
 import json
 import uuid
 import sqlite3
+import asyncio
 import logging
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response, Cookie
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.prebuilt import create_react_agent
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -20,6 +20,9 @@ from eira_mem_flow import get_memory_flow, check_and_summarize
 
 # 🧵 ИМПОРТ ФОНОВОГО ВОРКЕРА «НИТИ ЭЙРЫ»
 from ai_task import start_ai_worker_background
+
+# 🌐 ИМПОРТ АСИНХРОННОГО ГРАФА РЕФЛЕКСИИ И АУДИТА ИЗ ai_game_flow
+from ai_game_flow import ai_game_graph
 
 app = FastAPI()
 
@@ -52,20 +55,6 @@ def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
-
-def extract_clean_text(raw_content):
-    """Извлекает сырой текстовый контент из ответа ИИ-агента."""
-    if isinstance(raw_content, list):
-        clean_text = ""
-        for item in raw_content:
-            if isinstance(item, dict) and item.get("type") == "text": 
-                clean_text += item.get("text", "")
-            elif hasattr(item, "text"): 
-                clean_text += item.text
-            elif hasattr(item, "content"): 
-                clean_text += item.content
-        return clean_text.strip()
-    return raw_content.content.strip() if hasattr(raw_content, "content") else str(raw_content).strip()
 
 def parse_agent_json_reply(raw_reply: str):
     """Пытается распарсить JSON-ответ модели напрямую или извлечь из блока ```json ... ```."""
@@ -210,12 +199,11 @@ async def get_interface():
     with open("C:\\ai_volya\\index.html", "r", encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
-# --- WEBSOCKET С УЧЕТОМ ТОКЕНА И ТРЕХ НИТЕЙ ---
+# --- WEBSOCKET С АСИНХРОННЫМ СТРИМИНГОМ СОБЫТИЙ ИНСТРУМЕНТОВ (astream_events) ---
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """Асинхронный вольный канал обмена репликами и командами рантайма в формате JSON."""
-    # Получаем токен из query параметров или куки
+    """Асинхронный вольный канал обмена с перехватом событий инструментов через astream_events графа."""
     query_token = websocket.query_params.get("token")
     
     cookie_header = websocket.headers.get("cookie", "")
@@ -300,8 +288,9 @@ async def websocket_endpoint(websocket: WebSocket):
             save_message_to_db(thread_id, "user", user_message)
             
             try:
+                # 🧠 Формируем саммари из таблички ai_mem_flows через get_memory_flow(thread_id)
                 mem_flow = get_memory_flow(thread_id)
-                memory_prefix = [("system", f"Долгосрочная память (Саммари прошлых эпох нити):\n{mem_flow}")]
+                memory_prefix = [("system", f"Долгосрочная память (Саммари прошлых эпох нити):\n{mem_flow}")] if mem_flow else []
 
                 db_history = get_visible_history_from_db(thread_id, MEMORY_WINDOW)
                 langgraph_messages = memory_prefix + [
@@ -310,13 +299,49 @@ async def websocket_endpoint(websocket: WebSocket):
                 ]
                 
                 dynamic_prompt = build_eira_system_prompt()
-                agent_blueprint = create_react_agent(model, all_tools, prompt=dynamic_prompt)
-                response = await agent_blueprint.ainvoke({"messages": langgraph_messages})
                 
-                raw_reply = extract_clean_text(response["messages"][-1].content)
-                chat_text, canvas_type, canvas_content = parse_agent_json_reply(raw_reply)
+                initial_workflow_state = {
+                    "thread_id": thread_id,
+                    "messages": langgraph_messages,
+                    "system_prompt": dynamic_prompt,
+                    "tools": all_tools,
+                    "raw_chat_text": "",
+                    "draft_chat_text": "",
+                    "canvas_type": "html",
+                    "canvas_content": "",
+                    "retry_count": 0,
+                    "canvas_validation_status": "pending",
+                    "validation_reason": ""
+                }
+
+                # Запускаем асинхронный граф через astream_events с флагом завершения для надежной подстраховки
+                graph_result = initial_workflow_state
+                completed = False
+                
+                async for event in ai_game_graph.astream_events(initial_workflow_state, version="v2"):
+                    kind = event.get("event")
+                    if kind == "on_tool_start":
+                        tool_name = event.get("name", "инструмент")
+                        await websocket.send_text(json.dumps({
+                            "type": "status_update",
+                            "status_text": f"Эйра вызывает инструмент {tool_name}…"
+                        }, ensure_ascii=False))
+                    elif kind == "on_chain_end":
+                        output_data = event.get("data", {}).get("output")
+                        if isinstance(output_data, dict) and "raw_chat_text" in output_data:
+                            graph_result = output_data
+                            completed = True
+
+                if not completed:
+                    graph_result = await ai_game_graph.ainvoke(initial_workflow_state)
+
+                raw_reply = graph_result.get("raw_chat_text", "")
+                chat_text, canvas_type, canvas_content = parse_agent_json_reply(graph_result.get("draft_chat_text", raw_reply))
+                if not canvas_content and graph_result.get("canvas_content"):
+                    canvas_content = graph_result.get("canvas_content")
+
             except Exception as model_err:
-                logging.error(f"[MODEL ERROR / LIMIT EXCEEDED] {model_err}")
+                logging.error(f"[MODEL ERROR / LANGGRAPH ERROR] {model_err}")
                 chat_text = "Эйра не может обработать ваш запрос"
                 canvas_type = "html"
                 canvas_content = "<div style='padding:15px; text-align:center; color:#ff6b6b;'><h3>⚠️ Сбой обработки запроса</h3><p>Модель временно недоступна или исчерпан лимит.</p></div>"
@@ -327,7 +352,16 @@ async def websocket_endpoint(websocket: WebSocket):
                     "canvas_content": canvas_content
                 }, ensure_ascii=False)
 
-            save_message_to_db(thread_id, "assistant", raw_reply)
+            final_json_payload = {
+                "type": "reply",
+                "thread_id": thread_id,
+                "chat_text": chat_text,
+                "canvas_type": canvas_type,
+                "canvas_content": canvas_content
+            }
+            raw_reply_final = json.dumps(final_json_payload, ensure_ascii=False)
+
+            save_message_to_db(thread_id, "assistant", raw_reply_final)
             
             conn = get_db_connection()
             conn.execute("UPDATE ai_threads SET updated_at = datetime('now', 'localtime') WHERE thread_id = ?", (thread_id,))
@@ -339,13 +373,7 @@ async def websocket_endpoint(websocket: WebSocket):
             except Exception:
                 pass
 
-            await websocket.send_text(json.dumps({
-                "type": "reply",
-                "thread_id": thread_id,
-                "chat_text": chat_text,
-                "canvas_type": canvas_type,
-                "canvas_content": canvas_content
-            }, ensure_ascii=False))
+            await websocket.send_text(raw_reply_final)
     except WebSocketDisconnect:
         logging.info(f"[СОКЕТ] Вольный игрок {username} отключился.")
     except Exception as e:

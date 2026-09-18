@@ -420,15 +420,23 @@
             ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws?token=${encodeURIComponent(token)}`);
 
             ws.onmessage = function(event) {
-                hideTypingIndicator();
                 try {
                     const data = JSON.parse(event.data);
 
                     if (data.type === 'error') {
+                        hideTypingIndicator();
                         alert(data.message);
                         authOverlay.style.display = 'flex';
                         return;
                     }
+
+                    if (data.type === 'status_update') {
+                        // Динамически показываем статус вызова инструмента на 2.5 секунды
+                        showToolCallIndicator(data.status_text);
+                        return;
+                    }
+
+                    hideTypingIndicator();
 
                     if (data.thread_id) {
                         currentThreadId = data.thread_id;
@@ -451,6 +459,7 @@
                         loadThreads();
                     }
                 } catch (err) {
+                    hideTypingIndicator();
                     console.error("[JSON ПАРСЕР СБОЙ]:", err, event.data);
                 }
             };
@@ -600,12 +609,30 @@
             if (typingMessageElement) return;
             typingMessageElement = document.createElement('div');
             typingMessageElement.classList.add('message', 'typing');
-            typingMessageElement.innerHTML = `<span>Эйра думает</span><div class="typing-dots"><span></span><span></span><span></span></div>`;
+            typingMessageElement.innerHTML = `<span id="typing-text-span">Эйра думает</span><div class="typing-dots"><span></span><span></span><span></span></div>`;
             messagesContainer.appendChild(typingMessageElement);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
             
             messageInput.disabled = true;
             sendBtn.disabled = true;
+        }
+
+        function showToolCallIndicator(statusText) {
+            if (!typingMessageElement) {
+                showTypingIndicator();
+            }
+            const spanElem = document.getElementById('typing-text-span');
+            if (spanElem) {
+                spanElem.innerText = statusText;
+            }
+            
+            // Через 2.5 секунды возвращаем текст обратно к "Эйра думает"
+            setTimeout(() => {
+                const currentSpan = document.getElementById('typing-text-span');
+                if (currentSpan && currentSpan.innerText === statusText) {
+                    currentSpan.innerText = "Эйра думает";
+                }
+            }, 2500);
         }
 
         function hideTypingIndicator() {
