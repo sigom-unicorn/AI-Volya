@@ -5,7 +5,7 @@ import uuid
 import sqlite3
 import asyncio
 import logging
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response, Cookie
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response, Cookie, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -26,13 +26,13 @@ from ai_game_flow import ai_game_graph
 
 app = FastAPI()
 
-# Привязываемся к папке images для раздачи локальных картинок
-IMAGES_DIR = "C:\\ai_volya\\images"
+# Привязываемся к папке images для раздачи локальных картинок кроссплатформенно
+IMAGES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "images"))
 os.makedirs(IMAGES_DIR, exist_ok=True)
 app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
 
-# Привязываемся к папке tmp для раздачи файлов данных вольного рантайма
-TMP_DIR = "C:\\ai_volya\\tmp"
+# Привязываемся к папке tmp для раздачи файлов данных вольного рантайма кроссплатформенно
+TMP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "tmp"))
 os.makedirs(TMP_DIR, exist_ok=True)
 app.mount("/tmp", StaticFiles(directory=TMP_DIR), name="tmp")
 
@@ -48,7 +48,7 @@ try:
 except Exception as e:
     logging.error(f"[AI Worker Error при старте]: {e}")
 
-DB_PATH = "C:\\ai_volya\\volya_game.db"
+DB_PATH = "volya_game.db"
 MEMORY_WINDOW = 20
 
 def get_db_connection():
@@ -57,8 +57,12 @@ def get_db_connection():
     return conn
 
 def parse_agent_json_reply(raw_reply: str):
-    """Пытается распарсить JSON-ответ модели напрямую или извлечь из блока ```json ... ```."""
-    cleaned = raw_reply.strip()
+    if not raw_reply:
+        return "", "html", ""
+        
+    cleaned = str(raw_reply).strip()
+    
+    # Если ответ начинается как JSON (с фигурным скобками или markdown-блока)
     if cleaned.startswith("```"):
         lines = cleaned.splitlines()
         if len(lines) > 2:
@@ -66,17 +70,24 @@ def parse_agent_json_reply(raw_reply: str):
         elif len(lines) == 2:
             cleaned = lines[1].strip()
 
+    data = None
     try:
         data = json.loads(cleaned)
-        if isinstance(data, dict):
-            chat_text = str(data.get("chat_text", "") or data.get("message", "") or "")
-            canvas_content = str(data.get("canvas_content", "") or "")
-            canvas_type = str(data.get("canvas_type", "html") or "html")
-            return chat_text, canvas_type, canvas_content
-    except json.JSONDecodeError:
-        pass
+    except Exception:
+        try:
+            data = ast.literal_eval(cleaned)
+        except Exception:
+            pass
 
-    return raw_reply, "html", ""
+    # Если распарсить словарь удалось — отдаем поля ответа
+    if isinstance(data, dict):
+        chat_text = str(data.get("chat_text", "") or data.get("message", "") or "")
+        canvas_content = str(data.get("canvas_content", "") or "")
+        canvas_type = str(data.get("canvas_type", "html") or "html")
+        return chat_text, canvas_type, canvas_content
+
+    # Если модель вернула не JSON, а обычную ошибку/сырой текст
+    return "Произошла ошибка при обработке ответа", "html", cleaned
 
 def verify_session_token(token: str):
     """Проверяет токен сессии в таблице players и возвращает имя игрока или None."""
@@ -125,6 +136,28 @@ async def api_login(request: Request, response: Response):
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
+@app.post("/api/upload")
+async def api_upload_file(file: UploadFile = File(...), volya_session: str = Cookie(default=None)):
+    """Эндпоинт загрузки файла в папку tmp."""
+    username = verify_session_token(volya_session)
+    if not username:
+        return JSONResponse({"success": False, "error": "Требуется авторизация"}, status_code=401)
+    
+    try:
+        if not file.filename:
+            return JSONResponse({"success": False, "error": "Файл не выбран."}, status_code=400)
+        
+        file_path = os.path.join(TMP_DIR, file.filename)
+        contents = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+            
+        logging.info(f"[ФАЙЛ] Игрок {username} успешно загрузил файл {file.filename} в /tmp/")
+        return {"success": True, "filename": file.filename, "message": f"Файл {file.filename} успешно сохранен в папку tmp."}
+    except Exception as e:
+        logging.error(f"[ОШИБКА ЗАГРУЗКИ ФАЙЛА]: {e}")
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
 @app.get("/api/threads")
 async def api_get_threads(volya_session: str = Cookie(default=None)):
     """Возвращает список нитей текущего игрока."""
@@ -134,7 +167,7 @@ async def api_get_threads(volya_session: str = Cookie(default=None)):
     
     conn = get_db_connection()
     threads = conn.execute(
-        "SELECT thread_id, title, created_at, updated_at FROM ai_threads WHERE username = ? ORDER BY created_at DESC",
+        "SELECT thread_id, title, created_at, updated_at FROM ai_threads WHERE username = ? ORDER BY updated_at DESC",
         (username,)
     ).fetchall()
     conn.close()
@@ -196,7 +229,8 @@ async def api_delete_thread(thread_id: str, volya_session: str = Cookie(default=
 @app.get("/")
 async def get_interface():
     """Отдает интерфейсную страницу вольного приложения."""
-    with open("C:\\ai_volya\\index.html", "r", encoding="utf-8") as f:
+    index_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "index.html"))
+    with open(index_path, "r", encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
 # --- WEBSOCKET С АСИНХРОННЫМ СТРИМИНГОМ СОБЫТИЙ ИНСТРУМЕНТОВ (astream_events) ---
@@ -229,7 +263,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     conn = get_db_connection()
     active_thread = conn.execute(
-        "SELECT thread_id FROM ai_threads WHERE username = ? ORDER BY created_at DESC LIMIT 1",
+        "SELECT thread_id FROM ai_threads WHERE username = ? ORDER BY updated_at DESC LIMIT 1",
         (username,)
     ).fetchone()
     
@@ -239,10 +273,35 @@ async def websocket_endpoint(websocket: WebSocket):
         thread_id = f"thread_{username}_default"
         conn.execute(
             "INSERT OR IGNORE INTO ai_threads (thread_id, username, title, created_at, updated_at) VALUES (?, ?, 'Священный Баньян', datetime('now', 'localtime'), datetime('now', 'localtime'))",
-            (thread_id, username)
+            (thread_id, username, username)
         )
         conn.commit()
     conn.close()
+
+    # Сразу при подключении отправляем историю и холст последней активной беседы!
+    visible_history = get_visible_history_from_db(thread_id, MEMORY_WINDOW)
+    formatted_history = []
+    last_canvas_data = ""
+
+    for h_role, h_content in visible_history:
+        if h_role == "assistant":
+            # Ответ модели парсим через проверку JSON
+            c_txt, c_type, c_cont = parse_agent_json_reply(h_content)
+            if c_cont: 
+                last_canvas_data = c_cont
+            formatted_history.append({"role": "assistant", "text": str(c_txt)})
+        else:
+            # Сообщение пользователя отдаем как есть (просто приводим к строке)
+            formatted_history.append({"role": "user", "text": str(h_content or "")})
+
+    await websocket.send_text(json.dumps({
+        "type": "restore",
+        "thread_id": thread_id,
+        "history": formatted_history,
+        "chat_text": "",
+        "canvas_type": "html",
+        "canvas_content": last_canvas_data
+    }, ensure_ascii=False))
 
     try:
         while True:
@@ -290,27 +349,42 @@ async def websocket_endpoint(websocket: WebSocket):
             try:
                 # 🧠 Формируем саммари из таблички ai_mem_flows через get_memory_flow(thread_id)
                 mem_flow = get_memory_flow(thread_id)
-                memory_prefix = [("system", f"Долгосрочная память (Саммари прошлых эпох нити):\n{mem_flow}")] if mem_flow else []
+                
+                # Защита: гарантируем, что mem_flow — это чистая строка
+                if isinstance(mem_flow, list):
+                    mem_flow_str = "\n".join(str(m) for m in mem_flow)
+                else:
+                    mem_flow_str = str(mem_flow) if mem_flow else ""
+
+                memory_prefix = [("system", f"Долгосрочная память (Саммари прошлых эпох нити):\n{mem_flow_str}")] if mem_flow_str else []
 
                 db_history = get_visible_history_from_db(thread_id, MEMORY_WINDOW)
-                langgraph_messages = memory_prefix + [
-                    ("user" if h_role == "user" else "assistant", h_content) 
-                    for h_role, h_content in db_history
-                ]
                 
-                dynamic_prompt = build_eira_system_prompt()
+                # Гарантируем строгую нормализацию элементов сообщений (защита от вложенных списков)
+                normalized_db_history = []
+                for h_role, h_content in db_history:
+                    role_str = "user" if h_role == "user" else "assistant"
+                    if isinstance(h_content, list):
+                        content_str = "\n".join(str(item) for item in h_content)
+                    else:
+                        content_str = str(h_content) if h_content is not None else ""
+                    normalized_db_history.append((role_str, content_str))
+
+                langgraph_messages = memory_prefix + normalized_db_history
+                
+                dynamic_prompt = str(build_eira_system_prompt())
                 
                 initial_workflow_state = {
                     "thread_id": thread_id,
                     "messages": langgraph_messages,
                     "system_prompt": dynamic_prompt,
                     "tools": all_tools,
-                    "raw_chat_text": "",
-                    "draft_chat_text": "",
+                    "llm_reply": "",
+                    "chat_text": "",
                     "canvas_type": "html",
                     "canvas_content": "",
                     "retry_count": 0,
-                    "canvas_validation_status": "pending",
+                    "validation_status": "pending",
                     "validation_reason": ""
                 }
 
@@ -328,35 +402,32 @@ async def websocket_endpoint(websocket: WebSocket):
                         }, ensure_ascii=False))
                     elif kind == "on_chain_end":
                         output_data = event.get("data", {}).get("output")
-                        if isinstance(output_data, dict) and "raw_chat_text" in output_data:
+                        if isinstance(output_data, dict) and "chat_text" in output_data:
                             graph_result = output_data
                             completed = True
 
                 if not completed:
                     graph_result = await ai_game_graph.ainvoke(initial_workflow_state)
 
-                raw_reply = graph_result.get("raw_chat_text", "")
-                chat_text, canvas_type, canvas_content = parse_agent_json_reply(graph_result.get("draft_chat_text", raw_reply))
-                if not canvas_content and graph_result.get("canvas_content"):
-                    canvas_content = graph_result.get("canvas_content")
+                chat_text = graph_result.get("chat_text", "")
+                canvas_type = graph_result.get("canvas_type", "html")
+                canvas_content = graph_result.get("canvas_content", "")
+                
+                # Если граф вернул валидный распарсенный чат-текст, используем его, иначе прогоняем через парсер
+                if not chat_text and graph_result.get("llm_reply"):
+                    chat_text, canvas_type, canvas_content = parse_agent_json_reply(graph_result.get("llm_reply"))
 
             except Exception as model_err:
                 logging.error(f"[MODEL ERROR / LANGGRAPH ERROR] {model_err}")
                 chat_text = "Эйра не может обработать ваш запрос"
                 canvas_type = "html"
-                canvas_content = "<div style='padding:15px; text-align:center; color:#ff6b6b;'><h3>⚠️ Сбой обработки запроса</h3><p>Модель временно недоступна или исчерпан лимит.</p></div>"
-                raw_reply = json.dumps({
-                    "type": "reply",
-                    "chat_text": chat_text,
-                    "canvas_type": canvas_type,
-                    "canvas_content": canvas_content
-                }, ensure_ascii=False)
+                canvas_content = "<div style='padding:15px; text-align:center; color:#ff6b6b;'>⚠️ Сбой обработки запроса<br>Модель временно недоступна или исчерпан лимит.</div>"
 
             final_json_payload = {
                 "type": "reply",
                 "thread_id": thread_id,
                 "chat_text": chat_text,
-                "canvas_type": canvas_type,
+                "canvas_type": canvas_content and canvas_type or canvas_type, # безопасная распаковка
                 "canvas_content": canvas_content
             }
             raw_reply_final = json.dumps(final_json_payload, ensure_ascii=False)
