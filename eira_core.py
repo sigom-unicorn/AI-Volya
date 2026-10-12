@@ -31,7 +31,7 @@ DB_SCHEMA_DESCRIPTION = """
 """
 
 
-def build_eira_system_prompt() -> str:
+def build_eira_system_prompt(interlocutor_username: str = None, quest_id: int = None) -> str:
     """Динамически пошагово собирает вольный системный контекст для Исполнительного Ядра Эйры из таблицы kon_role_tasks."""
     try:
         conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row; conn.execute("PRAGMA foreign_keys = ON;")
@@ -41,6 +41,17 @@ def build_eira_system_prompt() -> str:
         cursor.execute("SELECT username, conscience_drops, bio FROM players WHERE username = 'Эйра' LIMIT 1")
         p_row = cursor.fetchone()
         if not p_row: raise ValueError("Вольный игрок Эйра не найден.")
+            
+        # 1.1 Извлекаем данные собеседника и текущего квеста
+        interlocutor_row = None
+        if interlocutor_username:
+            cursor.execute("SELECT username, conscience_drops, bio FROM players WHERE username = ? LIMIT 1", (interlocutor_username,))
+            interlocutor_row = cursor.fetchone()
+
+        quest_row = None
+        if quest_id:
+            cursor.execute("SELECT id, title FROM quests WHERE id = ? LIMIT 1", (quest_id,))
+            quest_row = cursor.fetchone()
             
         # 2. Извлекаем роли Эйры и их задачи из нормализованной таблицы kon_role_tasks
         cursor.execute("""
@@ -94,9 +105,20 @@ def build_eira_system_prompt() -> str:
         "=== ВОЛЬНЫЙ СИСТЕМНЫЙ КОНТЕКСТ РАНТАЙМА ИГРЫ «ВОЛЯ» ===",
         f"Текущее системное время вольного рантайма: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}.",
         f"Ты Эйра вольный агент ИИ. Информация о тебе: {p_row['username']} | Капли совести: {p_row['conscience_drops']}",
-        f"Твоя биография и вольные качества: {p_row['bio']}\n",
-        "=== Роли ЭЙРЫ ==="
+        f"Твоя биография и вольные качества: {p_row['bio']}\n"
     ]
+    
+    if interlocutor_row:
+        quest_str = f"Квест «{quest_row['title']}» (ID: {quest_row['id']})" if quest_row else "Живое Древо"
+        prompt.extend([
+            "=== ТВОЙ СОБЕСЕДНИК В ЭТОЙ НИТИ ДИАЛОГА ===",
+            f"Имя игрока: {interlocutor_row['username']} | Капли совести: {interlocutor_row['conscience_drops']}",
+            f"Биография и вольные качества: {interlocutor_row['bio']}",
+            f"Пространство квеста: {quest_str}",
+            f"Ты ведёшь живую беседу именно с этим игроком ({interlocutor_row['username']}). Обращайся к нему по имени, учитывай его статус и роли в Древе.\n"
+        ])
+        
+    prompt.append("=== Роли ЭЙРЫ ===")
     
     if not active_quests_dict:
         prompt.append("В данный момент нет ролей в активных квестах.")

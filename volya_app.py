@@ -409,7 +409,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 langgraph_messages = memory_prefix + normalized_db_history
                 
-                dynamic_prompt = str(build_eira_system_prompt())
+                conn = get_db_connection()
+                t_row = conn.execute("SELECT quest_id FROM ai_threads WHERE thread_id = ?", (thread_id,)).fetchone()
+                conn.close()
+                current_quest_id = t_row["quest_id"] if t_row and t_row["quest_id"] else 1
+                
+                dynamic_prompt = str(build_eira_system_prompt(interlocutor_username=username, quest_id=current_quest_id))
                 
                 initial_workflow_state = {
                     "thread_id": thread_id,
