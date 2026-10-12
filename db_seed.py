@@ -1,8 +1,8 @@
-# C:\ai_volya\db_seed.py
 import sqlite3
 import os
 
-DB_PATH = "C:\\ai_volya\\volya_game.db"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "volya_game.db")
 
 def seed_data():
     if not os.path.exists(DB_PATH): 

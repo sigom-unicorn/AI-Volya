@@ -1,7 +1,8 @@
 import sqlite3
 import os
 
-DB_PATH = "C:\\ai_volya\\volya_game.db"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "volya_game.db")
 
 def init_memory_flow_table():
     """Создает таблицу для хранения саммари и точек синхронизации памяти."""

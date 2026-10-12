@@ -1,10 +1,10 @@
-# C:\ai_volya\tools_pack\image_tools.py
+# tools_pack/image_tools.py
 import os
 import base64
 from langchain_core.tools import tool
 
-BASE_DIR = "C:\\ai_volya"
-TMP_DIR = "C:\\ai_volya\\tmp"
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+TMP_DIR = os.path.abspath(os.path.join(BASE_DIR, "tmp"))
 
 def _ensure_safe_path(file_path: str) -> str:
     """Проверка безопасности пути к файлу изображения."""

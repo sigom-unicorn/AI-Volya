@@ -1,8 +1,9 @@
-# C:\ai_volya\chat_logs.py
+import os
 import sqlite3
 from datetime import datetime
 
-DB_PATH = "C:\\ai_volya\\volya_game.db"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "volya_game.db")
 
 def _get_connection():
     """Внутренний хелпер для безопасного подключения к БД с поддержкой FOREIGN KEYS."""

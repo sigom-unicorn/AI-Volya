@@ -1,9 +1,10 @@
-# tools_pack/game_tools.py
+import os
 import sqlite3
 import datetime
 from langchain_core.tools import tool
 
-DB_PATH = "C:\\ai_volya\\volya_game.db"
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DB_PATH = os.path.join(BASE_DIR, "volya_game.db")
 
 def _get_connection():
     conn = sqlite3.connect(DB_PATH)

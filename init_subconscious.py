@@ -3,7 +3,8 @@ import sqlite3
 import os
 import sqlite_vec
 
-DB_NAME = "ai_subconscious.db"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_NAME = os.path.join(BASE_DIR, "ai_subconscious.db")
 
 def init_db():
     # Удаляем старый файл, если он без расширения vec

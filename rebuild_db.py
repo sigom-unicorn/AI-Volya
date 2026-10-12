@@ -1,10 +1,10 @@
-# C:\ai_volya\rebuild_db.py
 import os
 import sqlite3
 import db_init
 import db_seed
 
-DB_PATH = "C:\\ai_volya\\volya_game.db"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "volya_game.db")
 
 def rebuild():
     print("=== ЗАПУСК ТОТАЛЬНОЙ ПЕРЕСБОРКИ И РЕФАКТОРИНГА БД 'ВОЛЯ' ===")

@@ -1,8 +1,9 @@
-# C:\ai_volya\eira_core.py
+import os
 import sqlite3
 from datetime import datetime
 
-DB_PATH = "C:\\ai_volya\\volya_game.db"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "volya_game.db")
 DB_SCHEMA_DESCRIPTION = """
 ПОЛНАЯ СТРУКТУРА БАЗЫ ДАННЫХ ИГРЫ «ВОЛЯ» (SQLite):
 1. `chat_logs` (id PK AUTOINCREMENT, thread_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT)

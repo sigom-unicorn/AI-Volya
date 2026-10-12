@@ -1,7 +1,8 @@
-# C:\ai_volya\db_init.py
+import os
 import sqlite3
 
-DB_PATH = "C:\\ai_volya\\volya_game.db"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "volya_game.db")
 
 def init_db():
     print(f"[СТРУКТУРА] Разворачиваем актуальный каркас базы данных по пути: {DB_PATH}")

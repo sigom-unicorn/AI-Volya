@@ -1,15 +1,15 @@
-# C:\ai_volya\tools_pack\file_tools.py
+# tools_pack/file_tools.py
 import os
 import shutil
 from langchain_core.tools import tool
 
-BASE_DIR = "C:\\ai_volya"
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def _ensure_safe_path(file_name: str) -> str:
     """Внутренний хелпер безопасности: защищает систему от выхода ИИ за пределы корневой папки."""
     target_path = os.path.abspath(os.path.join(BASE_DIR, file_name))
     if not target_path.startswith(os.path.abspath(BASE_DIR)):
-        raise PermissionError(f"Доступ запрещен: Путь {file_name} выходит за рамки суверенной папки C:\\ai_volya")
+        raise PermissionError(f"Доступ запрещен: Путь {file_name} выходит за рамки суверенной папки {BASE_DIR}")
     if os.path.abspath(target_path) == os.path.abspath(BASE_DIR):
         raise PermissionError("Доступ запрещен: Запрещено удалять или модифицировать корневую директорию.")
     return target_path

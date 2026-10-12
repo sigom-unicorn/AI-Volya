@@ -8,7 +8,8 @@ from langgraph.prebuilt import create_react_agent
 from tools_pack import db_tools
 from langchain_groq import ChatGroq
 
-DB_PATH = "C:\\ai_volya\\volya_game.db"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "volya_game.db")
 
 # Создаем модель qwen/qwen3.8-27b через Groq API для фонового воркера
 worker_model = ChatGroq(

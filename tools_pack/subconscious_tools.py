@@ -5,7 +5,8 @@ import struct
 import sqlite_vec
 from langchain_huggingface import HuggingFaceEmbeddings
 
-DB_NAME = "ai_subconscious.db"
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DB_NAME = os.path.join(BASE_DIR, "ai_subconscious.db")
 
 # Инициализируем модель эмбеддингов LangChain (384 мерности)
 _embeddings_model = None

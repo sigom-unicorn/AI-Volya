@@ -1,4 +1,4 @@
-# C:\ai_volya\volya_app.py
+# volya_app.py
 import os
 import json
 import uuid
@@ -48,7 +48,8 @@ try:
 except Exception as e:
     logging.error(f"[AI Worker Error при старте]: {e}")
 
-DB_PATH = "volya_game.db"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "volya_game.db")
 MEMORY_WINDOW = 20
 
 def get_db_connection():

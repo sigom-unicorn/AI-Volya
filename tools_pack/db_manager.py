@@ -1,5 +1,8 @@
 import sqlite3
 import json
+import os
+
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def execute_raw_sql(sql_query: str, db_path: str = "volya_game.db") -> str:
     """
@@ -8,7 +11,8 @@ def execute_raw_sql(sql_query: str, db_path: str = "volya_game.db") -> str:
     Поддерживает выбор базы данных через параметр db_path (по умолчанию volya_game.db, также доступна ai_subconscious.db).
     """
     try:
-        conn = sqlite3.connect(db_path)
+        resolved_path = db_path if os.path.isabs(db_path) else os.path.join(BASE_DIR, db_path)
+        conn = sqlite3.connect(resolved_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
