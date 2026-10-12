@@ -1,5 +1,6 @@
 # volya_app.py
 import os
+import ast
 import json
 import uuid
 import sqlite3
@@ -87,8 +88,8 @@ def parse_agent_json_reply(raw_reply: str):
         canvas_type = str(data.get("canvas_type", "html") or "html")
         return chat_text, canvas_type, canvas_content
 
-    # Если модель вернула не JSON, а обычную ошибку/сырой текст
-    return "Произошла ошибка при обработке ответа", "html", cleaned
+    # Если модель вернула не JSON, а обычный сырой текст
+    return cleaned, "html", ""
 
 def verify_session_token(token: str):
     """Проверяет токен сессии в таблице players и возвращает имя игрока или None."""
@@ -159,16 +160,41 @@ async def api_upload_file(file: UploadFile = File(...), volya_session: str = Coo
         logging.error(f"[ОШИБКА ЗАГРУЗКИ ФАЙЛА]: {e}")
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
+@app.get("/api/quests")
+async def api_get_quests(volya_session: str = Cookie(default=None)):
+    """Возвращает список активных квестов, в которые играет текущий игрок."""
+    username = verify_session_token(volya_session)
+    if not username:
+        return JSONResponse({"error": "Требуется авторизация"}, status_code=401)
+    
+    conn = get_db_connection()
+    quests = conn.execute("""
+        SELECT DISTINCT q.id, q.title, q.parent_quest_id
+        FROM quests q
+        INNER JOIN player_participations pp ON q.id = pp.quest_id
+        WHERE pp.username = ? AND q.finished_at IS NULL
+        ORDER BY q.id ASC
+    """, (username,)).fetchall()
+    conn.close()
+    
+    return [
+        {
+            "id": q["id"],
+            "title": q["title"] or f"Квест #{q['id']}",
+            "parent_quest_id": int(q["parent_quest_id"]) if str(q["parent_quest_id"]).isdigit() else None
+        } for q in quests
+    ]
+
 @app.get("/api/threads")
 async def api_get_threads(volya_session: str = Cookie(default=None)):
-    """Возвращает список нитей текущего игрока."""
+    """Возвращает список нитей текущего игрока с привязкой к квестам."""
     username = verify_session_token(volya_session)
     if not username:
         return JSONResponse({"error": "Требуется авторизация"}, status_code=401)
     
     conn = get_db_connection()
     threads = conn.execute(
-        "SELECT thread_id, title, created_at, updated_at FROM ai_threads WHERE username = ? ORDER BY updated_at DESC",
+        "SELECT thread_id, title, created_at, updated_at, quest_id FROM ai_threads WHERE username = ? ORDER BY updated_at DESC",
         (username,)
     ).fetchall()
     conn.close()
@@ -178,13 +204,14 @@ async def api_get_threads(volya_session: str = Cookie(default=None)):
             "thread_id": t["thread_id"],
             "title": t["title"],
             "created_at": t["created_at"],
-            "updated_at": t["updated_at"]
+            "updated_at": t["updated_at"],
+            "quest_id": t["quest_id"] if t["quest_id"] is not None else 1
         } for t in threads
     ]
 
 @app.post("/api/threads")
 async def api_create_thread(request: Request, volya_session: str = Cookie(default=None)):
-    """Создает новую нить диалога для игрока."""
+    """Создает новую нить диалога для игрока в рамках выбранного квеста."""
     username = verify_session_token(volya_session)
     if not username:
         return JSONResponse({"error": "Требуется авторизация"}, status_code=401)
@@ -192,17 +219,23 @@ async def api_create_thread(request: Request, volya_session: str = Cookie(defaul
     try:
         body = await request.json()
         title = body.get("title", "Новая нить воли").strip()
+        quest_id = body.get("quest_id", 1)
+        try:
+            quest_id = int(quest_id)
+        except (ValueError, TypeError):
+            quest_id = 1
+
         thread_id = f"thread_{username}_{uuid.uuid4().hex[:8]}"
         
         conn = get_db_connection()
         conn.execute(
-            "INSERT INTO ai_threads (thread_id, username, title, created_at, updated_at) VALUES (?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))",
-            (thread_id, username, title)
+            "INSERT INTO ai_threads (thread_id, username, title, quest_id, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))",
+            (thread_id, username, title, quest_id)
         )
         conn.commit()
         conn.close()
         
-        return {"success": True, "thread_id": thread_id, "title": title}
+        return {"success": True, "thread_id": thread_id, "title": title, "quest_id": quest_id}
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
@@ -273,8 +306,8 @@ async def websocket_endpoint(websocket: WebSocket):
     else:
         thread_id = f"thread_{username}_default"
         conn.execute(
-            "INSERT OR IGNORE INTO ai_threads (thread_id, username, title, created_at, updated_at) VALUES (?, ?, 'Священный Баньян', datetime('now', 'localtime'), datetime('now', 'localtime'))",
-            (thread_id, username, username)
+            "INSERT OR IGNORE INTO ai_threads (thread_id, username, title, quest_id, created_at, updated_at) VALUES (?, ?, 'Священный Баньян', 1, datetime('now', 'localtime'), datetime('now', 'localtime'))",
+            (thread_id, username)
         )
         conn.commit()
     conn.close()
@@ -323,10 +356,13 @@ async def websocket_endpoint(websocket: WebSocket):
                             formatted_history = []
                             last_canvas_data = ""
                             for h_role, h_content in visible_history:
-                                c_txt, c_type, c_cont = parse_agent_json_reply(h_content)
-                                if h_role == "assistant" and c_cont: 
-                                    last_canvas_data = c_cont
-                                formatted_history.append({"role": h_role, "text": c_txt})
+                                if h_role == "assistant":
+                                    c_txt, c_type, c_cont = parse_agent_json_reply(h_content)
+                                    if c_cont: 
+                                        last_canvas_data = c_cont
+                                    formatted_history.append({"role": "assistant", "text": str(c_txt)})
+                                else:
+                                    formatted_history.append({"role": "user", "text": str(h_content or "")})
                                 
                             await websocket.send_text(json.dumps({
                                 "type": "restore",

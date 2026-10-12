@@ -257,7 +257,8 @@ def close_veche_and_apply_decision(veche_quest_id: int, proposal_id: int) -> str
     params = {"veche_quest_id": veche_quest_id, "proposal_id": proposal_id}
     try:
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute("UPDATE quests SET finished_at = ? WHERE id = ?", (now_str, veche_quest_id))
+        if int(veche_quest_id) != 1:
+            cursor.execute("UPDATE quests SET finished_at = ? WHERE id = ?", (now_str, veche_quest_id))
         cursor.execute("UPDATE proposals SET closed_at = ? WHERE id = ? AND closed_at IS NULL", (now_str, proposal_id))
         conn.commit()
         conn.close()

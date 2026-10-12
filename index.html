@@ -111,8 +111,8 @@
 
         /* Выдвижная полупрозрачная панель нитей слева от чата (выезжает от самого левого края экрана) */
         #threads-drawer {
-            position: fixed; top: 0; left: -320px; width: 320px; height: 100%;
-            background: rgba(10, 14, 20, 0.45); backdrop-filter: blur(12px);
+            position: fixed; top: 0; left: -340px; width: 340px; height: 100%;
+            background: rgba(10, 14, 20, 0.55); backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px); border-right: 1px solid rgba(76, 175, 80, 0.3);
             box-shadow: 5px 0 25px rgba(0, 0, 0, 0.4); z-index: 100;
             transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -128,10 +128,75 @@
         .drawer-close:hover { color: #fff; }
 
         #threads-container {
-            flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;
+            flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;
+        }
+        /* Дерево Квестов в боковой панели */
+        .quest-node {
+            margin-bottom: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .quest-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: rgba(76, 175, 80, 0.12);
+            border: 1px solid rgba(129, 199, 132, 0.3);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #a5d6a7;
+        }
+        .quest-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-grow: 1;
+        }
+        .quest-add-btn {
+            background: rgba(76, 175, 80, 0.25);
+            border: 1px solid rgba(129, 199, 132, 0.4);
+            color: #ffffff;
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 15px;
+            line-height: 1;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            margin-left: 6px;
+        }
+        .quest-add-btn:hover {
+            background: rgba(76, 175, 80, 0.55);
+            color: #fff;
+            box-shadow: 0 0 6px rgba(129, 199, 132, 0.4);
+        }
+        .quest-threads {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 4px;
+            padding-left: 10px;
+            border-left: 1px dashed rgba(129, 199, 132, 0.25);
+            margin-left: 8px;
+        }
+        .quest-empty-threads {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            font-style: italic;
+            padding: 4px 8px;
         }
         .thread-item {
-            padding: 10px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; display: flex;
+            padding: 8px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex;
             justify-content: space-between; align-items: center; color: #ffffff; background: rgba(255, 255, 255, 0.04);
             border: 1px solid transparent; transition: all 0.2s;
         }
@@ -139,11 +204,6 @@
         .thread-item.active { background: rgba(76, 175, 80, 0.2); border-color: rgba(129, 199, 132, 0.4); color: #fff; }
         .thread-del { font-size: 12px; color: #ef5350; background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
         .thread-del:hover { background: rgba(239, 83, 80, 0.2); }
-        .new-thread-btn {
-            background: rgba(76, 175, 80, 0.15); border: 1px dashed rgba(129, 199, 132, 0.4); color: #ffffff;
-            padding: 10px; border-radius: 8px; text-align: center; font-size: 13px; font-weight: bold; cursor: pointer;
-        }
-        .new-thread-btn:hover { background: rgba(76, 175, 80, 0.3); color: #fff; }
 
         .json-badge { font-size: 10px; background: rgba(76, 175, 80, 0.3); color: #81c784; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(76, 175, 80, 0.5); }
         #chat-messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
@@ -279,16 +339,15 @@
         </div>
     </div>
 
-    <!-- Выдвижная полупрозрачная панель бесед слева от края экрана -->
+    <!-- Выдвижная полупрозрачная панель квестов слева от края экрана -->
     <div id="threads-drawer">
         <div class="drawer-header">
-            <span class="drawer-title">💬 Беседы</span>
+            <span class="drawer-title">📜 Квесты</span>
             <button class="drawer-close" onclick="toggleThreadsDrawer()">×</button>
         </div>
         <div id="threads-container">
-            <!-- Динамически заполняется беседами -->
+            <!-- Динамически заполняется деревом квестов и бесед -->
         </div>
-        <div class="new-thread-btn" onclick="openCreateThreadModal()">+ Новая беседа</div>
     </div>
 
     <div id="chat-sidebar">
@@ -296,7 +355,7 @@
         <div id="chat-resizer"></div>
 
         <div id="chat-header">
-            <button class="threads-toggle-btn" onclick="toggleThreadsDrawer()">💬 Беседы ▾</button>
+            <button class="threads-toggle-btn" onclick="toggleThreadsDrawer()">📜 Квесты ▾</button>
             <span id="current-player-label" style="color: #ffffff;">Живое Древо</span>
         </div>
 
@@ -522,7 +581,11 @@
                                 appendMessage(msg.role, msg.text);
                             });
                         }
-                        renderCanvas(data.canvas_type, data.canvas_content);
+                        if (data.canvas_content && data.canvas_content.trim() !== '') {
+                            renderCanvas(data.canvas_type, data.canvas_content);
+                        } else {
+                            viewport.innerHTML = '';
+                        }
                         loadThreads();
                     }
                 } catch (err) {
@@ -532,29 +595,75 @@
             };
         }
 
-        function loadThreads() {
-            fetch('/api/threads')
-                .then(res => {
-                    if (res.status === 401) {
-                        authOverlay.style.display = 'flex';
-                        throw new Error('Требуется авторизация');
-                    }
-                    return res.json();
-                })
-                .then(threads => {
-                    let html = '';
-                    threads.forEach(t => {
-                        const isActive = t.thread_id === currentThreadId ? 'active' : '';
+        let activeTargetQuestId = 1;
+
+        async function loadThreads() {
+            try {
+                const [questsRes, threadsRes] = await Promise.all([
+                    fetch('/api/quests'),
+                    fetch('/api/threads')
+                ]);
+
+                if (questsRes.status === 401 || threadsRes.status === 401) {
+                    authOverlay.style.display = 'flex';
+                    return;
+                }
+
+                const quests = await questsRes.json();
+                const threads = await threadsRes.json();
+
+                // Группируем беседы по quest_id
+                const threadsByQuest = {};
+                threads.forEach(t => {
+                    const qId = t.quest_id || 1;
+                    if (!threadsByQuest[qId]) threadsByQuest[qId] = [];
+                    threadsByQuest[qId].push(t);
+                });
+
+                let html = '';
+                if (!quests || quests.length === 0) {
+                    html = '<div style="color: rgba(255,255,255,0.5); font-size:12px; text-align:center; padding:20px;">Нет активных квестов для участия</div>';
+                } else {
+                    quests.forEach(q => {
+                        const qThreads = threadsByQuest[q.id] || [];
+                        const isChild = q.parent_quest_id ? 'style="margin-left: 12px;"' : '';
+                        const qIcon = q.id === 1 ? '🌿' : '🌱';
+
+                        let threadsHtml = '';
+                        if (qThreads.length === 0) {
+                            threadsHtml = '<div class="quest-empty-threads">Пока нет бесед</div>';
+                        } else {
+                            qThreads.forEach(t => {
+                                const isActive = t.thread_id === currentThreadId ? 'active' : '';
+                                threadsHtml += `
+                                    <div class="thread-item ${isActive}" onclick="switchThread('${t.thread_id}')">
+                                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1;">${t.title}</span>
+                                        <button class="thread-del" onclick="event.stopPropagation(); promptDeleteThread('${t.thread_id}', '${t.title.replace(/'/g, "\\'")}')" title="Удалить беседу">×</button>
+                                    </div>
+                                `;
+                            });
+                        }
+
                         html += `
-                            <div class="thread-item ${isActive}" onclick="switchThread('${t.thread_id}')">
-                                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1;">${t.title}</span>
-                                <button class="thread-del" onclick="event.stopPropagation(); promptDeleteThread('${t.thread_id}', '${t.title.replace(/'/g, "\\'")}')" title="Удалить беседу">×</button>
+                            <div class="quest-node" ${isChild}>
+                                <div class="quest-header">
+                                    <div class="quest-title-wrap" title="${q.title}">
+                                        <span>${qIcon}</span>
+                                        <span>${q.title}</span>
+                                    </div>
+                                    <button class="quest-add-btn" onclick="event.stopPropagation(); openCreateThreadModal(${q.id}, '${q.title.replace(/'/g, "\\'")}')" title="Создать беседу в квесте «${q.title}»">+</button>
+                                </div>
+                                <div class="quest-threads">
+                                    ${threadsHtml}
+                                </div>
                             </div>
                         `;
                     });
-                    threadsContainer.innerHTML = html;
-                })
-                .catch(err => console.error(err));
+                }
+                threadsContainer.innerHTML = html;
+            } catch (err) {
+                console.error("[ОШИБКА ЗАГРУЗКИ ДЕРЕВА КВЕСТОВ]:", err);
+            }
         }
 
         function switchThread(threadId) {
@@ -564,14 +673,15 @@
             }
         }
 
-        function openCreateThreadModal() {
+        function openCreateThreadModal(questId = 1, questTitle = 'Воля') {
+            activeTargetQuestId = questId;
             modalTitleText.innerText = "💬 Новая беседа";
-            modalDescText.innerText = "Введите название для новой беседы:";
+            modalDescText.innerText = `Введите название беседы в квесте «${questTitle}»:`;
             modalInputField.style.display = "block";
             modalConfirmBtn.innerText = "Создать";
             modalConfirmBtn.className = "modal-btn confirm";
             
-            const defaultTitle = 'Беседа воли ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const defaultTitle = 'Беседа ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             modalInputField.value = defaultTitle;
             
             modalCallback = () => {
@@ -580,7 +690,7 @@
                 fetch('/api/threads', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title })
+                    body: JSON.stringify({ title, quest_id: activeTargetQuestId })
                 })
                 .then(res => res.json())
                 .then(data => {
