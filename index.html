@@ -40,7 +40,23 @@
             transition: all 0.2s ease;
         }
         .auth-btn:hover { background: #43a047; box-shadow: 0 0 15px rgba(76, 175, 80, 0.5); }
-        .players-hint { margin-top: 16px; font-size: 12px; color: #ffffff; display: none; }
+        .players-hint { margin-top: 18px; font-size: 12px; color: #ffffff; display: none; text-align: center; }
+        .player-quick-btn {
+            background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(129, 199, 132, 0.4);
+            color: #a7f3d0; padding: 6px 14px; margin: 4px; border-radius: 14px; font-size: 13px;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+        .player-quick-btn:hover {
+            background: rgba(76, 175, 80, 0.5); color: #fff; box-shadow: 0 0 8px rgba(129, 199, 132, 0.4);
+        }
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 12px;
+            cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .logout-btn:hover {
+            background: rgba(239, 83, 80, 0.25); border-color: rgba(239, 83, 80, 0.5); color: #ffcdd2;
+        }
 
         /* Кастомное модальное окно ввода / подтверждения (в стеклянном стиле) */
         #modal-overlay {
@@ -356,7 +372,10 @@
 
         <div id="chat-header">
             <button class="threads-toggle-btn" onclick="toggleThreadsDrawer()">📜 Квесты ▾</button>
-            <span id="current-player-label" style="color: #ffffff;">Живое Древо</span>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="current-player-label" style="color: #ffffff; font-size: 13px;">Живое Древо</span>
+                <button class="logout-btn" onclick="logoutPlayer()" title="Сменить игрока">👤 Сменить</button>
+            </div>
         </div>
 
         <div id="chat-messages"></div>
@@ -461,12 +480,39 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
+            loadRegisteredPlayersHint();
             const sessionToken = getCookie('volya_session');
             if (sessionToken) {
                 authOverlay.style.display = 'none';
                 initWebSocketAndThreads(sessionToken);
             }
         });
+
+        function loadRegisteredPlayersHint() {
+            fetch('/api/players')
+                .then(res => res.json())
+                .then(players => {
+                    const hintContainer = document.getElementById('players-hint-container');
+                    if (!hintContainer || !players || players.length === 0) return;
+                    hintContainer.style.display = 'block';
+                    hintContainer.innerHTML = '<div style="margin-bottom: 8px; color: rgba(255,255,255,0.7); font-size: 12px;">Быстрый выбор соратника:</div>' +
+                        players.map(p => `<button type="button" class="player-quick-btn" onclick="quickSelectPlayer('${p.username}')">${p.username}</button>`).join('');
+                })
+                .catch(() => {});
+        }
+
+        function quickSelectPlayer(name) {
+            usernameInput.value = name;
+            submitLogin();
+        }
+
+        function logoutPlayer() {
+            document.cookie = "volya_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+            if (ws) {
+                try { ws.close(); } catch(e) {}
+            }
+            location.reload();
+        }
 
         function toggleThreadsDrawer() {
             threadsDrawer.classList.toggle('open');
@@ -575,6 +621,9 @@
                         loadThreads();
                     } 
                     else if (data.type === 'restore') {
+                        if (data.username) {
+                            currentPlayerLabel.innerText = data.username;
+                        }
                         messagesContainer.innerHTML = '';
                         if (data.history) {
                             data.history.forEach(msg => {

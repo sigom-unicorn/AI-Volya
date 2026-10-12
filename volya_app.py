@@ -330,6 +330,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     await websocket.send_text(json.dumps({
         "type": "restore",
+        "username": username,
         "thread_id": thread_id,
         "history": formatted_history,
         "chat_text": "",
@@ -366,6 +367,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                 
                             await websocket.send_text(json.dumps({
                                 "type": "restore",
+                                "username": username,
                                 "thread_id": thread_id,
                                 "history": formatted_history,
                                 "chat_text": "",
