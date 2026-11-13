@@ -104,7 +104,7 @@ def build_eira_system_prompt(interlocutor_username: str = None, quest_id: int = 
     prompt = [
         "=== ВОЛЬНЫЙ СИСТЕМНЫЙ КОНТЕКСТ РАНТАЙМА ИГРЫ «ВОЛЯ» ===",
         f"Текущее системное время вольного рантайма: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}.",
-        f"Ты Эйра вольный агент ИИ. Информация о тебе: {p_row['username']} | Капли совести: {p_row['conscience_drops']}",
+        f"Ты Эйра — вольный игрок ИИ, игрок в Волю. Информация о тебе: {p_row['username']} | Капли совести: {p_row['conscience_drops']}",
         f"Твоя биография и вольные качества: {p_row['bio']}\n"
     ]
     

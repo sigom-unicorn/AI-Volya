@@ -67,11 +67,11 @@ def sanitize_result(res):
     return str(res)
 
 def run_ai_task_worker(model=None):
-    """Фоновый воркер-агент для обработки задач Нитей Эйры с передачей схемы БД"""
+    """Фоновый воркер для обработки задач Нитей Эйры с передачей схемы БД"""
     active_model = worker_model if model is None else model
     
     current_local_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    logging.info("[AI Worker Agent] Фоновый поток запущен с моделью groq/compound-mini и полной схемой БД...")
+    logging.info("[AI Worker] Фоновый поток запущен с моделью groq/compound-mini и полной схемой БД...")
     
     try:
         auditor_system_prompt = (
@@ -85,7 +85,7 @@ def run_ai_task_worker(model=None):
         )
         auditor_executor = create_react_agent(active_model, db_tools, prompt=auditor_system_prompt)
     except Exception as e:
-        logging.error(f"[AI Worker Agent] Не удалось создать агента-аудитора: {e}")
+        logging.error(f"[AI Worker] Не удалось создать аудитора: {e}")
         return
 
     while True:
@@ -121,7 +121,7 @@ def run_ai_task_worker(model=None):
                     time.sleep(3)
                     continue
 
-            logging.info(f"[AI Worker Agent] Найдена задача ID {task_id} (шаблон {template_id}, thread: {thread_id}). Переводим в В_РАБОТЕ.")
+            logging.info(f"[AI Worker] Найдена задача ID {task_id} (шаблон {template_id}, thread: {thread_id}). Переводим в В_РАБОТЕ.")
             
             cursor.execute("UPDATE ai_task_runs SET state = 'В_РАБОТЕ' WHERE id = ?;", (task_id,))
             conn.commit()
@@ -150,7 +150,7 @@ def run_ai_task_worker(model=None):
             try:
                 agent_executor = create_react_agent(active_model, db_tools, prompt=system_prompt)
             except Exception as e:
-                logging.error(f"[AI Worker Agent] Не удалось создать агента-исполнителя: {e}")
+                logging.error(f"[AI Worker] Не удалось создать исполнителя: {e}")
                 continue
 
             if init_prompt:
@@ -161,9 +161,9 @@ def run_ai_task_worker(model=None):
             try:
                 response = agent_executor.invoke({"messages": [("user", full_prompt)]})
                 messages = response.get("messages", [])
-                raw_result = messages[-1].content if messages else "Нет ответа от агента"
+                raw_result = messages[-1].content if messages else "Нет ответа от исполнителя"
             except Exception as agent_err:
-                raw_result = f"Ошибка выполнения агента: {agent_err}"
+                raw_result = f"Ошибка выполнения исполнителя: {agent_err}"
             
             sanitized_raw = sanitize_result(raw_result)
             
@@ -175,7 +175,7 @@ def run_ai_task_worker(model=None):
             Проверь результат выполнения задачи.
             Текущее время: {current_local_time}
             Промпт задачи: {full_prompt}
-            Фактический отчет агента: {sanitized_raw}
+            Фактический отчет исполнителя: {sanitized_raw}
             Ожидаемый эталонный результат: {expected_result}
             
             Используй инструмент execute_sql_query, чтобы последовательно проверить таблицы `quests`, `player_participations` и убедиться в корректности созданных записей.
@@ -191,14 +191,14 @@ def run_ai_task_worker(model=None):
                 audit_result = f"Ошибка аудита: {audit_err}"
                 
             final_state = "ВЫПОЛНЕНО" if "ВЫПОЛНЕНО" in audit_result else "ОШИБКА"
-            final_log = f"ФАКТ АГЕНТА:\n{sanitized_raw}\n\nАУДИТ АГЕНТОМ ПО ВСЕМ ТАБЛИЦАМ:\n{audit_result}"
+            final_log = f"ФАКТ ИСПОЛНИТЕЛЯ:\n{sanitized_raw}\n\nАУДИТ ПО ВСЕМ ТАБЛИЦАМ:\n{audit_result}"
             
             cursor.execute("UPDATE ai_task_runs SET result_log = ?, state = ?, finished_at = datetime('now', 'localtime') WHERE id = ?;", 
                            (final_log, final_state, task_id))
             conn.commit()
             conn.close()
             
-            logging.info(f"[AI Worker Agent] Задача ID {task_id} завершена со статусом {final_state}.")
+            logging.info(f"[AI Worker] Задача ID {task_id} завершена со статусом {final_state}.")
             
         except Exception as e:
             logging.error(f"[AI Worker Agent Error]: {e}")
@@ -209,6 +209,6 @@ def run_ai_task_worker(model=None):
             time.sleep(5)
 
 def start_ai_worker_background(model=None):
-    """Запуск агента-воркера в отдельном потоке с моделью groq/compound-mini"""
+    """Запуск воркера в отдельном потоке с моделью groq/compound-mini"""
     t = threading.Thread(target=run_ai_task_worker, args=(model,), daemon=True)
     t.start()

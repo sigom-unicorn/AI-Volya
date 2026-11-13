@@ -76,7 +76,7 @@ async def generator_node(state: AIGameFlowState) -> Dict[str, Any]:
     thread_id = state.get("thread_id", "unknown") if isinstance(state, dict) else "unknown"
     retry_count = state.get("retry_count", 0) if isinstance(state, dict) else 0
     
-    log_to_db(thread_id, "generator_node", "start", f"Запуск агента (попытка {retry_count + 1})")
+    log_to_db(thread_id, "generator_node", "start", f"Запуск игрока (попытка {retry_count + 1})")
     
     try:
         messages = state.get("messages", []) if isinstance(state, dict) else []

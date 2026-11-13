@@ -24,7 +24,7 @@ def search_online(query: str) -> str:
 @tool
 def browse_website(url: str) -> str:
     """Переходит по указанной ссылке (URL) и полностью читает текстовое содержимое сайта для глубокого анализа."""
-    print(f"\n[ДИАГНОСТИКА] Агент переходит по ссылке: '{url}'")
+    print(f"\n[ДИАГНОСТИКА] Игрок переходит по ссылке: '{url}'")
     try:
         import requests
         from bs4 import BeautifulSoup
